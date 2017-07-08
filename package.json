@@ -1,0 +1,26 @@
+{
+  "dependencies": {
+    "bcrypt-nodejs": "0.0.3",
+    "body-parser": "1.12.4",
+    "express": "4.12.3",
+    "express-session": "1.11.2",
+    "http-status": "0.1.8",
+    "jsonwebtoken": "^7.3.0",
+    "mongoose": "4.0.3",
+    "passport": "0.2.2",
+    "passport-facebook": "2.0.0",
+    "stripe": "3.3.4",
+    "underscore": "1.5.2",
+    "wagner-core": "0.1.0"
+  },
+  "devDependencies": {
+    "bluebird": "^3.5.0",
+    "mocha": "2.2.4",
+    "request": "^2.81.0",
+    "request-promise": "^4.2.0",
+    "superagent": "1.2.0"
+  },
+  "scripts": {
+    "test": "mocha tests"
+  }
+}
