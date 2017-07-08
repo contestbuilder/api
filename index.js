@@ -1,9 +1,10 @@
 'use strict';
 
-var express = require('express');
-var wagner = require('wagner-core');
+var express   = require('express'),
+	wagner    = require('wagner-core'),
+	configLib = require('./libraries/config.lib');
 
-require('./models')();
+require('./models')(configLib.env.DATABASE_PATH);
 require('./services')(wagner);
 
 var app = express();
