@@ -15,5 +15,5 @@ app.use(morgan('tiny'));
 app.use(require('./middlewares')(wagner, baseUrl));
 app.use(baseUrl, require('./controllers'));
 
-app.listen(3010);
-console.log('Listening on port 3010!');
+app.listen(+configLib.env.PORT);
+console.log('Listening on port ' + configLib.env.PORT + '!');
