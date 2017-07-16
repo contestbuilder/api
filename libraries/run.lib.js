@@ -18,7 +18,8 @@ function run(source_code, language, time_limit, input, output, context) {
 				source_file_name   = run_id.toString() + '.cpp';
 				compiled_file_name = run_id.toString() + '.exe';
 				compile_cmd        = 'g++ ' + source_file_name + ' -o ' + compiled_file_name;
-				run_cmd            = '.\\' + run_id.toString() + '.exe < .\\' + input_file_name;
+				// run_cmd            = '.\\' + run_id.toString() + '.exe < .\\' + input_file_name;
+				run_cmd            = run_id.toString() + '.exe < ' + input_file_name;
 				break;
 
 			default:
