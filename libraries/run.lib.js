@@ -1,8 +1,10 @@
 'use strict';
 
-var fs       = require('fs'),
-	exec     = require('child_process').exec,
-	mongoose = require('mongoose');
+var fs        = require('fs'),
+	exec      = require('child_process').exec,
+	path      = require('path'),
+	os        = require('os'),
+	mongoose  = require('mongoose');
 
 function run(source_code, language, time_limit, input, output, context) {
 	var created_files = [];
@@ -10,16 +12,18 @@ function run(source_code, language, time_limit, input, output, context) {
 	return new Promise(function(resolve, reject) {
 		var run_id = new mongoose.mongo.ObjectId();
 
-		var input_file_name = run_id.toString() + '.in';
+		var tmp_file_dir = os.tmpdir();
+		var input_file_name = path.join(tmp_file_dir, run_id.toString() + '.in');
+
 		var source_file_name, compiled_file_name;
 		var compile_cmd, run_cmd;
 		switch(language) {
 			case 'cpp':
-				source_file_name   = run_id.toString() + '.cpp';
-				compiled_file_name = run_id.toString() + '.exe';
-				compile_cmd        = 'g++ ' + source_file_name + ' -o ' + compiled_file_name;
-				// run_cmd            = '.\\' + run_id.toString() + '.exe < .\\' + input_file_name;
-				run_cmd            = run_id.toString() + '.exe < ' + input_file_name;
+				source_file_name   = path.join(tmp_file_dir, run_id.toString() + '.cpp');
+				compiled_file_name = path.join(tmp_file_dir, run_id.toString() + '.exe');
+
+				compile_cmd = 'g++ ' + source_file_name + ' -o ' + compiled_file_name;
+				run_cmd     = compiled_file_name + ' < ' + input_file_name;
 				break;
 
 			default:

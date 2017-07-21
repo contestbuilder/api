@@ -1,3 +1,7 @@
 module.exports = {
-    secret: 'r31hrh37108hrehfjdu80vcx087yr0e71qhjrue0fds0a'
+    SECRET: 'abc_whatever',
+
+    PORT: 3010,
+
+    DATABASE_PATH: 'mongodb://localhost:27017/contest_builder'
 };
