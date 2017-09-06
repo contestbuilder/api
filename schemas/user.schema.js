@@ -19,8 +19,7 @@ var userSchema = new Schema({
         required: true
     },
     password   : {
-        type    : String,
-        required: true
+        type: String
     },
     deleted_at : {
         type: Date

@@ -2,7 +2,9 @@
 
 var express   = require('express'),
     handleLib = require('../libraries/handle.lib'),
-    models    = require('mongoose').models,
+    mongoose  = require('mongoose'),
+    models    = mongoose.models,
+    ObjectId  = mongoose.Types.ObjectId,
     User      = models.User;
 
 /**
@@ -25,12 +27,11 @@ function getUsers(req, res) {
 
 function createUser(req, res) {
     handleLib.handleRequired(req.body, [
-        'username', 'email', 'password'
+        'username', 'email'
     ])
         .then(function() {
             var user = new User({
                 username: req.body.username,
-                password: req.body.password,
                 email   : req.body.email
             });
 
@@ -41,21 +42,41 @@ function createUser(req, res) {
 }
 
 function getUser(req, res) {
-    User.findOne({
-        username: req.params.username
-    })
+    var query = {
+        $or: [{
+            username: req.params.username
+        }]
+    };
+
+    if(ObjectId.isValid(req.params.username)) {
+        query.$or.push({
+            _id: ObjectId(req.params.username)
+        });
+    }
+
+    User.findOne(query)
         .then(handleLib.handleFindOne)
         .then(handleLib.handleReturn.bind(null, res, 'user'))
         .catch(handleLib.handleError.bind(null, res));
 }
 
 function editUser(req, res) {
-    User.findOne({
-        username: req.params.username
-    })
+    var query = {
+        $or: [{
+            username: req.params.username
+        }]
+    };
+
+    if(ObjectId.isValid(req.params.username)) {
+        query.$or.push({
+            _id: ObjectId(req.params.username)
+        });
+    }
+
+    User.findOne(query)
         .then(handleLib.handleFindOne)
         .then(function(userDoc) {
-            ['name'].forEach(function(key) {
+            ['name', 'username', 'password'].forEach(function(key) {
                 if(req.body[key] !== undefined) {
                     userDoc[key] = req.body[key];
                 }
