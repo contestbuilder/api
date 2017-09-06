@@ -111,7 +111,7 @@ function isAuthorized(user, url, method) {
     if(user === undefined) {
         var ok = false;
         visitorsAllowed.forEach(function(allowed) {
-            if(allowed.url == url && allowed.method == method) {
+            if(url.indexOf(allowed.url) === 0 && allowed.method == method) {
                 ok = true;
             }
         });
@@ -129,5 +129,11 @@ var visitorsAllowed = [
 }, {
     url   : '/login',
     method: 'POST'
+}, {
+    url   : '/user',
+    method: 'GET'
+}, {
+    url   : '/user',
+    method: 'PUT'
 }
 ];
