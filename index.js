@@ -5,7 +5,7 @@ var express   = require('express'),
 	morgan    = require('morgan'),
 	configLib = require('./libraries/config.lib');
 
-require('./models')(configLib.env.DATABASE_PATH);
+require('./models')(configLib.env.databasePath);
 require('./services')(wagner);
 
 var app = express();
@@ -15,5 +15,5 @@ app.use(morgan('tiny'));
 app.use(require('./middlewares')(wagner, baseUrl));
 app.use(baseUrl, require('./controllers'));
 
-app.listen(+configLib.env.PORT);
-console.log('Listening on port ' + configLib.env.PORT + '!');
+app.listen(+configLib.env.port);
+console.log('Listening on port ' + configLib.env.port + '!');
