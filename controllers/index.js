@@ -16,6 +16,7 @@ api.use(require('./problem.controller'));
 api.use(require('./solution.controller'));
 api.use(require('./testCase.controller'));
 api.use(require('./log.controller'));
+api.use(require('./email.controller'));
 
 // run
 api.use(require('./run.controller'));

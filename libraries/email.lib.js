@@ -39,6 +39,36 @@ function sendMail(to, subject, html, cb) {
 	});
 }
 
+
+function regularInvitation(userEmail, userId, userName) {
+	return new Promise(function(resolve, reject) {
+		var url = 'http://18.231.43.57/invitation/' + userId;
+
+		var html = '';
+		html += '<p>Olá, ' + (userName || '') + '</p>';
+		html += '<p>Você recebeu um convite para se cadastrar no site Contest Builder.</p>';
+		html += '<p>Clique no link abaixo para definir sua senha:</p>';
+		html += '<p><a href="' + url + '">' + url + '</a></p>';
+		html += '<p></p>';
+		html += '<p>Att,</p><p>Cristhian.</p>';
+
+		sendMail(
+			userEmail,
+			'Contest Builder - Convite',
+			html,
+			function(err, info) {
+				if(err) {
+					return reject(err);
+				}
+
+				return resolve(info);
+			}
+		);
+	});
+}
+
+
 module.exports = {
-	sendMail: sendMail
+	sendMail:          sendMail,
+	regularInvitation: regularInvitation
 };

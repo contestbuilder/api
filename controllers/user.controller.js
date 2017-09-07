@@ -2,6 +2,7 @@
 
 var express   = require('express'),
     handleLib = require('../libraries/handle.lib'),
+    emailLib  = require('../libraries/email.lib'),
     mongoose  = require('mongoose'),
     models    = mongoose.models,
     ObjectId  = mongoose.Types.ObjectId,
@@ -36,6 +37,20 @@ function createUser(req, res) {
             });
 
             return user.save();
+        })
+        .then(function(userDoc) {
+            if(req.body.sendEmailInvitation) {
+                return emailLib.regularInvitation(
+                    userDoc.email,
+                    userDoc._id,
+                    userDoc.name
+                )
+                .then(function(info) {
+                    return userDoc;
+                });
+            }
+
+            return Promise.resolve(userDoc);
         })
         .then(handleLib.handleReturn.bind(null, res, 'user'))
         .catch(handleLib.handleError.bind(null, res));
