@@ -4,6 +4,7 @@ var mongoose         = require('mongoose'),
 	Schema           = mongoose.Schema,
 	problemLogSchema = require('./problemLog.schema'),
 	solutionSchema   = require('./solution.schema'),
+    checkerSchema    = require('./checker.schema'),
     testCaseSchema   = require('./testCase.schema');
 
 var problemSchema = new Schema({
@@ -21,6 +22,7 @@ var problemSchema = new Schema({
     },
     v:          [ problemLogSchema ],
     solutions:  [ solutionSchema ],
+    checkers:   [ checkerSchema  ],
     test_cases: [ testCaseSchema ]
 });
 

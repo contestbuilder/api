@@ -2,8 +2,8 @@
 
 var mongoose          = require('mongoose'),
 	Schema            = mongoose.Schema,
-	solutionLogSchema = require('./solutionLog.schema'),
-    solutionRunSchema = require('./solutionRun.schema');
+    runSchema         = require('./run.schema'),
+    solutionLogSchema = require('./solutionLog.schema');
 
 var solutionSchema = new Schema({
     name:       {
@@ -19,7 +19,7 @@ var solutionSchema = new Schema({
         type: Date
     },
     v:          [ solutionLogSchema ],
-    run:        [ solutionRunSchema ]
+    run:        [ runSchema ]
 });
 
 module.exports = solutionSchema;

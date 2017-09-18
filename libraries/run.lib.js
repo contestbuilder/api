@@ -48,6 +48,7 @@ function run(source_code, language, time_limit, input, output, context) {
 		created_files.push(compiled_file_name);
 		exec(compile_cmd, function(err, stdout, stderr) {
 			if(err) {
+				console.log('Error compiling the code: ' + err);
 				unlinkFiles(created_files);
 				return resolve({
 					_id:     run_id,
@@ -63,6 +64,7 @@ function run(source_code, language, time_limit, input, output, context) {
 				timeout: time_limit * 1000
 			}, function(err, stdout, stderr) {
 				if(err) {
+					console.log('Error running the code: ' + err);
 					unlinkFiles(created_files);
 					return resolve({
 						_id:     run_id,
@@ -94,7 +96,11 @@ function unlinkFiles(files) {
 	console.log('unlinking files');
 	files.forEach(function(file) {
 		if(fs.existsSync(file)) {
-			fs.unlinkSync(file);
+			try {
+				fs.unlinkSync(file);
+			} catch(err) {
+				console.log('Error unlinking file ' + file + ': ' + err);
+			}
 		}
 	});
 }

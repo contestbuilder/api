@@ -19,13 +19,21 @@ contestSchema.pre('save', function(next) {
     			_problem.nickname = getNickname(_problem.name);
     		}
 
-    		if(Array.isArray(_problem.solutions)) {
-    			_problem.solutions.forEach(function(_solution) {
-    				if(!_solution.nickname) {
-    					_solution.nickname = getNickname(_solution.name);
-    				}
-    			});
-    		}
+            if(Array.isArray(_problem.solutions)) {
+                _problem.solutions.forEach(function(_solution) {
+                    if(!_solution.nickname) {
+                        _solution.nickname = getNickname(_solution.name);
+                    }
+                });
+            }
+
+            if(Array.isArray(_problem.checkers)) {
+                _problem.checkers.forEach(function(_checker) {
+                    if(!_checker.nickname) {
+                        _checker.nickname = getNickname(_checker.name);
+                    }
+                });
+            }
     	});
     }
 
