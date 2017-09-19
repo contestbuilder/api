@@ -1,6 +1,7 @@
 'use strict';
 
-var AWS    = require('aws-sdk'),
+var fs     = require('fs'),
+	AWS    = require('aws-sdk'),
 	config = require('../config');
 
 
@@ -41,10 +42,26 @@ function s3downloadFile(s3Path) {
 	});
 }
 
+function s3uploadFile(s3Path, filePath) {
+	return new Promise(function(resolve, reject) {
+		s3.upload({
+			Key:  s3Path,
+			Body: fs.createReadStream(filePath, {})
+		}, function(err, data) {
+			if(err) {
+				return reject(err);
+			}
+
+			return resolve(data);
+		});
+	});
+}
+
 
 module.exports = {
 	ses: ses,
 
-	s3:  s3,
-	s3downloadFile: s3downloadFile
+	s3:             s3,
+	s3downloadFile: s3downloadFile,
+	s3uploadFile:   s3uploadFile
 };

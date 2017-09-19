@@ -1,15 +1,15 @@
 'use strict';
 
-var fs   = require('fs'),
-	path = require('path'),
-	tmp  = require('tmp'),
-	aws  = require('./aws.lib'),
-	s3   = aws.s3;
+var fs      = require('fs'),
+	path    = require('path'),
+	tmp     = require('tmp'),
+	nodeZip = require('node-zip'),
+	aws     = require('./aws.lib'),
+	s3      = aws.s3;
 
 
 function buildBocaZip(contestName, problems, bocaFilesVersion) {
 	var tmpFileDir = tmp.dirSync().name;
-	console.log('temp dir', tmpFileDir);
 
 	var problemPromises = problems.map(function(problem) {
 		fs.mkdirSync(path.join(tmpFileDir, problem.nickname));
@@ -18,15 +18,22 @@ function buildBocaZip(contestName, problems, bocaFilesVersion) {
 		return Promise.resolve({})
 			.then(downloadBocaFiles.bind(null, problemFileDir, bocaFilesVersion || 'v1'))
 			.then(writeProblemFiles.bind(null, problemFileDir, problem))
-			.then(function(params) {
-				console.log(params);
-			})
 			.catch(function(err) {
 				console.log('err: ' + err);
 			});
 	});
 
-	return Promise.all(problemPromises);
+	return Promise.all(problemPromises)
+		.then(zipFiles.bind(null, tmpFileDir, contestName))
+		.then(uploadToS3.bind(null, contestName))
+		.then(function(uploadData) {
+			return {
+				VersionId: uploadData.VersionId
+			};
+		})
+		.catch(function(err) {
+			console.log('err on compression: ' + err);
+		});
 }
 
 function downloadBocaFiles(tmpFileDir, bocaVersion) {
@@ -100,6 +107,41 @@ function writeProblemFiles(problemTempDir, problem) {
 	});
 
 	return Promise.resolve();
+}
+
+function zipFiles(tempDir, contestName) {
+	var zip = new JSZip();
+
+	recursivelyAddToZip(zip, '', tempDir);
+
+	var data = zip.generate({
+		base64:      false,
+		compression: 'DEFLATE'
+	});
+	var zipPath = path.join(tempDir, contestName + '.zip');
+	fs.writeFileSync(zipPath, data, 'binary');
+
+	return Promise.resolve(zipPath);
+}
+
+function recursivelyAddToZip(zip, currentZipPath, currentOsPath) {
+	var files = fs.readdirSync(currentOsPath);
+
+	files.forEach(function(file) {
+		var fileStat   = fs.statSync(path.join(currentOsPath, file)),
+			newZipPath = (currentZipPath ? currentZipPath + '/' : '') + file,
+			newOsPath  = path.join(currentOsPath, file);
+
+		if(fileStat.isDirectory()) {
+			recursivelyAddToZip(zip, newZipPath, newOsPath);
+		} else if(fileStat.isFile()) {
+			zip.file(newZipPath, file);
+		}
+	});
+}
+
+function uploadToS3(contestNickname, zipPath) {
+	return aws.s3uploadFile('contests/' + contestNickname + '/boca.zip', zipPath);
 }
 
 buildBocaZip('123', [{

@@ -2,7 +2,8 @@
 
 var mongoose      = require('mongoose'),
 	Schema        = mongoose.Schema,
-	problemSchema = require('./problem.schema');
+	problemSchema = require('./problem.schema'),
+    bocaZipSchema = require('./bocaZip.schema');
 
 var contestSchema = new Schema({
     author      : {
@@ -30,10 +31,11 @@ var contestSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref : 'User'
     }],
-    problems    : [problemSchema],
+    problems    : [ problemSchema ],
     deleted_at  : {
         type: Date
-    }
+    },
+    bocaZip: [ bocaZipSchema ]
 });
 
 module.exports = contestSchema;
