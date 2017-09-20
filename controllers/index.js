@@ -18,6 +18,7 @@ api.use(require('./checker.controller'));
 api.use(require('./testCase.controller'));
 api.use(require('./log.controller'));
 api.use(require('./email.controller'));
+api.use(require('./boca.controller'));
 
 // run
 api.use(require('./run.controller'));

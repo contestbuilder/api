@@ -33,6 +33,10 @@ function buildBocaZip(contestName, problems, bocaFilesVersion) {
 		})
 		.catch(function(err) {
 			console.log('err on compression: ' + err);
+
+			return {
+				err: err
+			};
 		});
 }
 
@@ -141,28 +145,8 @@ function recursivelyAddToZip(zip, currentZipPath, currentOsPath) {
 }
 
 function uploadToS3(contestNickname, zipPath) {
-	return aws.s3uploadFile('contests/' + contestNickname + '/boca.zip', zipPath);
+	return aws.s3uploadFile('contests/' + contestNickname + '/' + contestNickname + '.zip', zipPath);
 }
-
-buildBocaZip('123', [{
-	nickname: 'abc',
-	name: 'abc',
-	v: [{
-		description: 'muito bom',
-		time_limit: 2
-	}],
-	test_cases: [{
-		v: [{
-			input: '1\n',
-			output: '2\n'
-		}]
-	}, {
-		v: [{
-			input: '3\n',
-			output: '4\n'
-		}]
-	}]
-}], 'v1');
 
 
 module.exports = {
