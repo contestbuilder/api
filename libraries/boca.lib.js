@@ -139,7 +139,7 @@ function recursivelyAddToZip(zip, currentZipPath, currentOsPath) {
 		if(fileStat.isDirectory()) {
 			recursivelyAddToZip(zip, newZipPath, newOsPath);
 		} else if(fileStat.isFile()) {
-			zip.file(newZipPath, file);
+			zip.file(newZipPath, fs.readFileSync(newOsPath));
 		}
 	});
 }
