@@ -5,10 +5,11 @@ var fs      = require('fs'),
 	tmp     = require('tmp'),
 	nodeZip = require('node-zip'),
 	aws     = require('./aws.lib'),
+	fileLib = require('./file.lib'),
 	s3      = aws.s3;
 
 
-function buildBocaZip(contestName, problems, bocaFilesVersion) {
+function buildBocaZip(contestNickname, problems, bocaFilesVersion) {
 	var tmpFileDir = tmp.dirSync().name;
 
 	var problemPromises = problems.map(function(problem) {
@@ -17,15 +18,15 @@ function buildBocaZip(contestName, problems, bocaFilesVersion) {
 
 		return Promise.resolve({})
 			.then(downloadBocaFiles.bind(null, problemFileDir, bocaFilesVersion || 'v1'))
-			.then(writeProblemFiles.bind(null, problemFileDir, problem))
+			.then(writeProblemFiles.bind(null, contestNickname, problemFileDir, problem))
 			.catch(function(err) {
 				console.log('err: ' + err);
 			});
 	});
 
 	return Promise.all(problemPromises)
-		.then(zipFiles.bind(null, tmpFileDir, contestName))
-		.then(uploadToS3.bind(null, contestName))
+		.then(zipFiles.bind(null, tmpFileDir, contestNickname))
+		.then(uploadToS3.bind(null, contestNickname))
 		.then(function(uploadData) {
 			return {
 				VersionId: uploadData.VersionId
@@ -75,45 +76,79 @@ function downloadAndWriteFile(s3Path, downloadPath) {
 		});
 }
 
-function writeProblemFiles(problemTempDir, problem) {
+function writeProblemFiles(contestNickname, problemTempDir, problem) {
 	var problemLastVersion = problem.v[ problem.v.length-1 ];
 
-	fs.mkdirSync(path.join(problemTempDir, 'description'));
-	// description txt
-	var descFile = path.join(problemTempDir, 'description', problem.nickname + '.txt');
-	fs.writeFileSync(descFile, problemLastVersion.description);
-	// description info
-	var problemInfo = 'basename=' + problem.nickname + '\n' +
-		'fullname=' + problem.name + '\n' +
-		'descfile=' + problem.nickname + '.txt';
-	fs.writeFileSync(path.join(problemTempDir, 'description', 'problem.info'), problemInfo);
+	return Promise.resolve()
+		.then(function() {
+			// description
+			fs.mkdirSync(path.join(problemTempDir, 'description'));
 
-	// input/output files
-	fs.mkdirSync(path.join(problemTempDir, 'input'));
-	fs.mkdirSync(path.join(problemTempDir, 'output'));
-	problem.test_cases.forEach(function(test_case, index) {
-		var testCaseLastVersion = test_case.v[ test_case.v.length-1 ];
+			// if the file was uploaded
+			if(problem.file && problem.file.name) {
+				// description info
+				var problemInfo = 'basename=' + problem.nickname + '\n' +
+					'fullname=' + problem.name + '\n' +
+					'descfile=' + problem.file.name;
+				fs.writeFileSync(path.join(problemTempDir, 'description', 'problem.info'), problemInfo);
 
-		fs.writeFileSync(path.join(problemTempDir, 'input', (index + 1).toString()), testCaseLastVersion.input);
-		fs.writeFileSync(path.join(problemTempDir, 'output', (index + 1).toString()), testCaseLastVersion.output);
-	});
+				return downloadAndWriteFile(
+					fileLib.replacePathWithParams('problemDescription', {
+						contest_nickname: contestNickname,
+						problem_nickname: problem.nickname,
+						file_name:        problem.file.name
+					}),
+					path.join(problemTempDir, 'description', problem.file.name)
+				);
+			}
+			// if there's no file uploaded
+			else {
+				var descFile = path.join(problemTempDir, 'description', problem.nickname + '.txt');
+				fs.writeFileSync(descFile, problemLastVersion.description);
 
-	// limits
-	fs.mkdirSync(path.join(problemTempDir, 'limits'));
-	[ 'c', 'cpp', 'java' ].forEach(function(language) {
-		var limitDesc = 'echo ' + problemLastVersion.time_limit + '\n' +
-			'echo 10\n' +
-			'echo 512\n' +
-			'echo 1024\n' +
-			'exit 0\n';
+				// description info
+				var problemInfo = 'basename=' + problem.nickname + '\n' +
+					'fullname=' + problem.name + '\n' +
+					'descfile=' + problem.nickname + '.txt';
+				fs.writeFileSync(path.join(problemTempDir, 'description', 'problem.info'), problemInfo);
 
-		fs.writeFileSync(path.join(problemTempDir, 'limits', language), limitDesc);
-	});
+				return true;
+			}
+		})
+		.then(function() {
+			// input/output files
+			fs.mkdirSync(path.join(problemTempDir, 'input'));
+			fs.mkdirSync(path.join(problemTempDir, 'output'));
 
-	return Promise.resolve();
+			problem.test_cases.forEach(function(test_case, index) {
+				var testCaseLastVersion = test_case.v[ test_case.v.length-1 ];
+
+				fs.writeFileSync(path.join(problemTempDir, 'input', (index + 1).toString()), testCaseLastVersion.input);
+				fs.writeFileSync(path.join(problemTempDir, 'output', (index + 1).toString()), testCaseLastVersion.output);
+			});
+
+			return true;
+		})
+		.then(function() {
+			// limits
+			fs.mkdirSync(path.join(problemTempDir, 'limits'));
+
+			[ 'c', 'cpp', 'java' ].forEach(function(language) {
+				var limitDesc = 
+					'echo ' + problemLastVersion.time_limit + '\n' +
+					'echo 10\n' +
+					'echo 512\n' +
+					'echo 1024\n' +
+					'exit 0\n';
+
+				fs.writeFileSync(path.join(problemTempDir, 'limits', language), limitDesc);
+			});
+
+			return true;
+		});
 }
 
-function zipFiles(tempDir, contestName) {
+function zipFiles(tempDir, contestNickname) {
 	var zip = new JSZip();
 
 	recursivelyAddToZip(zip, '', tempDir);
@@ -122,7 +157,7 @@ function zipFiles(tempDir, contestName) {
 		base64:      false,
 		compression: 'DEFLATE'
 	});
-	var zipPath = path.join(tempDir, contestName + '.zip');
+	var zipPath = path.join(tempDir, contestNickname + '.zip');
 	fs.writeFileSync(zipPath, data, 'binary');
 
 	return Promise.resolve(zipPath);
@@ -145,7 +180,12 @@ function recursivelyAddToZip(zip, currentZipPath, currentOsPath) {
 }
 
 function uploadToS3(contestNickname, zipPath) {
-	return aws.s3uploadFile('contests/' + contestNickname + '/' + contestNickname + '.zip', zipPath);
+	return aws.s3uploadFile(
+		fileLib.replacePathWithParams('bocaZip', {
+			contest_nickname: contestNickname
+		}),
+		zipPath
+	);
 }
 
 

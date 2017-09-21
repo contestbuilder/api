@@ -4,6 +4,7 @@ var status    = require('http-status'),
     express   = require('express'),
     handleLib = require('../libraries/handle.lib'),
     bocaLib   = require('../libraries/boca.lib'),
+    fileLib   = require('../libraries/file.lib'),
     s3        = require('../libraries/aws.lib').s3,
     models    = require('mongoose').models,
     Contest   = models.Contest;
@@ -101,13 +102,12 @@ function downloadZip(req, res) {
                 versionId = req.query.VersionId;
             }
 
-            var signedUrl = s3.getSignedUrl('getObject', {
-                Key:       'contests/' + contestDoc.nickname + '/' + contestDoc.nickname + '.zip',
-                VersionId: versionId,
-                Expires:   600
-            });
 
-            return signedUrl;
+            return fileLib.getSignedDownloadUrl('bocaZip', {
+                contest_nickname: contestDoc.nickname
+            }, {
+                VersionId: versionId
+            });
         })
         .then(handleLib.handleReturn.bind(null, res, 'signedUrl'))
         .catch(handleLib.handleError.bind(null, res));

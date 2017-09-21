@@ -13,10 +13,16 @@ var filePaths = [{
 	}, {
 		key: 'file_name'
 	}]
+}, {
+	key:    'bocaZip',
+	path:   'contests/:contest_nickname/:contest_nickname.zip',
+	params: [{
+		key: 'contest_nickname'
+	}]
 }];
 
 
-function getSignedDownloadUrl(key, params) {
+function getSignedDownloadUrl(key, params, opt) {
 	var filePath = filePaths.filter(function(filePath) {
 		return filePath.key === key;
 	})[0];
@@ -30,12 +36,17 @@ function getSignedDownloadUrl(key, params) {
 		throw new Error('Mising parameters.');
 	}
 
-    var signedUrl = s3.getSignedUrl('getObject', {
-        Key:     replacePathWithParams(filePath, params),
-        Expires: 600
-    });
 
-    return signedUrl;
+	var signParamObj = {
+        Key:     replacePathWithParams(key, params),
+        Expires: 600
+	};
+
+	if(opt.VersionId) {
+		signParamObj.VersionId = opt.VersionId;
+	}
+
+    return s3.getSignedUrl('getObject', signParamObj);
 }
 
 function getSignedUploadUrl(key, params) {
@@ -52,7 +63,7 @@ function getSignedUploadUrl(key, params) {
 		throw new Error('Mising parameters.');
 	}
 
-    var path = replacePathWithParams(filePath, params);
+    var path = replacePathWithParams(key, params);
     var signedUrl = s3.createPresignedPost({
         Expires: 600,
         Fields:  {
@@ -79,14 +90,18 @@ function removeFile(key, params) {
 	}
 
     return aws.s3removeFile(
-    	replacePathWithParams(filePath, params)
+    	replacePathWithParams(key, params)
     );
 }
 
-function replacePathWithParams(filePath, params) {
+function replacePathWithParams(key, params) {
+	var filePath = filePaths.filter(function(filePath) {
+		return filePath.key === key;
+	})[0];
+
 	var path = filePath.path;
 	filePath.params.forEach(function(param) {
-		path = path.replace(':' + param.key, params[param.key]);
+		path = path.replace(new RegExp(':' + param.key, 'g'), params[param.key]);
 	});
 	return path;
 }
@@ -95,5 +110,7 @@ function replacePathWithParams(filePath, params) {
 module.exports = {
 	getSignedDownloadUrl: getSignedDownloadUrl,
 	getSignedUploadUrl:   getSignedUploadUrl,
-	removeFile:           removeFile
+	removeFile:           removeFile,
+
+	replacePathWithParams: replacePathWithParams
 };
