@@ -74,6 +74,7 @@ module.exports = function(wagner, baseUrl) {
         User.findOne({
             username: req.body.username
         })
+            .select('_id username email password permissions')
 			.then(handleLib.handleFindOne)
 			.then(function(userDoc) {
                 if(userDoc.comparePassword(req.body.password)) {

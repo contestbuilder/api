@@ -1,6 +1,7 @@
 'use strict';
 
-var express   = require('express'),
+var status    = require('http-status'),
+    express   = require('express'),
     handleLib = require('../libraries/handle.lib'),
     bocaLib   = require('../libraries/boca.lib'),
     s3        = require('../libraries/aws.lib').s3,

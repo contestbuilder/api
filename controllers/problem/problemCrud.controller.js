@@ -2,9 +2,9 @@
 
 var status     = require('http-status'),
     express    = require('express'),
-    handleLib  = require('../libraries/handle.lib'),
-    versionLib = require('../libraries/version.lib'),
-    utilLib    = require('../libraries/util.lib'),
+    handleLib  = require('../../libraries/handle.lib'),
+    versionLib = require('../../libraries/version.lib'),
+    utilLib    = require('../../libraries/util.lib'),
     models     = require('mongoose').models,
     Contest    = models.Contest,
     Log        = models.Log;
@@ -111,7 +111,7 @@ function removeProblem(req, res) {
                     }));
                 }
             });
-            contestDoc.problems.splice(problemIndex, 1);
+            contestDoc.problems[problemIndex].deleted_at = new Date();
 
             return contestDoc.save();
         })
@@ -194,7 +194,8 @@ function editProblem(req, res) {
         })
         .then(handleLib.handleReturn.bind(null, res, 'problem'))
         .catch(handleLib.handleError.bind(null, res));
-};
+}
+
 
 var router = express.Router();
 

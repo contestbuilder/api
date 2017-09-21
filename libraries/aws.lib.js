@@ -57,11 +57,26 @@ function s3uploadFile(s3Path, filePath) {
 	});
 }
 
+function s3removeFile(s3Path) {
+	return new Promise(function(resolve, reject) {
+		s3.deleteObject({
+			Key: s3Path
+		}, function(err, data) {
+			if(err) {
+				return reject(err);
+			}
+
+			return resolve(data);
+		});
+	});
+}
+
 
 module.exports = {
 	ses: ses,
 
 	s3:             s3,
 	s3downloadFile: s3downloadFile,
-	s3uploadFile:   s3uploadFile
+	s3uploadFile:   s3uploadFile,
+	s3removeFile:   s3removeFile
 };

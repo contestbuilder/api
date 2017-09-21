@@ -5,23 +5,24 @@ var mongoose          = require('mongoose'),
     permissionsSchema = require('./permissions.schema');
 
 var userSchema = new Schema({
-    name       : {
+    name: {
         type: String
     },
-    username   : {
-        type    : String,
-        unique  : true,
+    username: {
+        type:     String,
+        unique:   true,
         required: true
     },
-    email      : {
-        type    : String,
-        unique  : true,
+    email: {
+        type:     String,
+        unique:   true,
         required: true
     },
-    password   : {
-        type: String
+    password: {
+        type:   String,
+        select: false
     },
-    deleted_at : {
+    deleted_at: {
         type: Date
     },
     permissions: permissionsSchema

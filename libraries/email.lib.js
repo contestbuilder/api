@@ -42,7 +42,7 @@ function sendMail(to, subject, html, cb) {
 
 function regularInvitation(userEmail, userId, userName) {
 	return new Promise(function(resolve, reject) {
-		var url = 'http://18.231.43.57/invitation/' + userId;
+		var url = config.url + 'invitation/' + userId;
 
 		var html = '';
 		html += '<p>Olá, ' + (userName || '') + '</p>';

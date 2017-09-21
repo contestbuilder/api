@@ -20,6 +20,11 @@ var problemSchema = new Schema({
     deleted_at: {
         type: Date
     },
+    file: {
+        name: {
+            type: String
+        }
+    },
     v:          [ problemLogSchema ],
     solutions:  [ solutionSchema ],
     checkers:   [ checkerSchema  ],
