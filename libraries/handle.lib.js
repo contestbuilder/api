@@ -8,7 +8,7 @@ function handleError(res, err) {
 
     if(err && err.message) {
         res
-            .status(err.code || status.INTERNAL_SERVER_ERROR)
+            .status(err.status_code || status.INTERNAL_SERVER_ERROR)
             .json({ error: err.message });
     } else {
         res
@@ -32,27 +32,53 @@ function handleReturn(res, property, obj) {
 function handleFindOne(obj) {
     if(!obj) {
         return Promise.reject({
-            message: 'Object not found.',
-            code   : status.NOT_FOUND
+            message:     'Object not found.',
+            status_code: status.NOT_FOUND
         });
     }
 
     return Promise.resolve(obj);
 }
 
+function handleAggregationFindOne(obj) {
+    if(!obj || !Array.isArray(obj) || obj.length !== 1) {
+        if(!obj) {
+            console.log('no object');
+        } else if(!Array.isArray(obj)) {
+            console.log('not an array');
+        } else {
+            console.log('length', obj.length);
+        }
+
+        return Promise.reject({
+            message:     'Object not found.',
+            status_code: status.NOT_FOUND
+        });
+    }
+
+    return Promise.resolve(obj[0]);
+}
+
 function handleRequired(body, requiredFields) {
     var missing = [];
 
     requiredFields.forEach(function(field) {
-        if(body[field] === undefined) {
+        if(Array.isArray(field)) {
+            if(field.every(function(subfield) {
+                return body[subfield] === undefined;
+            })) {
+                missing = missing.concat(field);
+            }
+        }
+        else if(body[field] === undefined) {
             missing.push(field);
         }
     });
 
     if(missing.length) {
         return Promise.reject({
-            message: 'The following fields are required and missing: ' + missing.join(', ') + '.',
-            code   : status.BAD_REQUEST
+            message:     'The following required fields are missing: ' + missing.join(', ') + '.',
+            status_code: status.BAD_REQUEST
         });
     }
 
@@ -80,10 +106,11 @@ function handlePopulate(properties, obj) {
 }
 
 module.exports = {
-    handleError   : handleError,
-    handleReturn  : handleReturn,
-    handleFindOne : handleFindOne,
-    handleRequired: handleRequired,
-    handleLog     : handleLog,
-    handlePopulate: handlePopulate
+    handleError:              handleError,
+    handleReturn:             handleReturn,
+    handleFindOne:            handleFindOne,
+    handleAggregationFindOne: handleAggregationFindOne,
+    handleRequired:           handleRequired,
+    handleLog:                handleLog,
+    handlePopulate:           handlePopulate
 };

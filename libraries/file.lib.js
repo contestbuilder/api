@@ -19,6 +19,16 @@ var filePaths = [{
 	params: [{
 		key: 'contest_nickname'
 	}]
+}, {
+	key:    'testCaseTempFile',
+	path:   'contests/:contest_nickname/:problem_nickname/test_cases/:file_name',
+	params: [{
+		key: 'contest_nickname'
+	}, {
+		key: 'problem_nickname'
+	}, {
+		key: 'file_name'
+	}]
 }];
 
 
@@ -42,6 +52,7 @@ function getSignedDownloadUrl(key, params, opt) {
         Expires: 600
 	};
 
+	opt = opt || {};
 	if(opt.VersionId) {
 		signParamObj.VersionId = opt.VersionId;
 	}

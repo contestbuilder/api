@@ -6,7 +6,7 @@ var status    = require('http-status'),
     utilLib   = require('../../libraries/util.lib'),
     fileLib   = require('../../libraries/file.lib'),
     models    = require('mongoose').models,
-    Contest   = models.Contest;;
+    Contest   = models.Contest;
 
 
 function getSignedDownloadUrl(req, res) {
@@ -18,15 +18,15 @@ function getSignedDownloadUrl(req, res) {
             var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
             if(problem === null) {
                 return Promise.reject({
-                    code:    status.NOT_FOUND,
-                    message: 'Problem not found.'
+                    status_code: status.NOT_FOUND,
+                    message:     'Problem not found.'
                 });
             }
 
             if(!problem.file) {
                 return Promise.reject({
-                    code:    status.BAD_REQUEST,
-                    message: 'Problem doesn\'t have a file attached.'
+                    status_code: status.BAD_REQUEST,
+                    message:     'Problem doesn\'t have a file attached.'
                 });
             }
 
@@ -49,8 +49,8 @@ function getSignedUploadUrl(req, res) {
             var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
             if(problem === null) {
                 return Promise.reject({
-                    code:    status.NOT_FOUND,
-                    message: 'Problem not found.'
+                    status_code: status.NOT_FOUND,
+                    message:     'Problem not found.'
                 });
             }
 
@@ -73,8 +73,8 @@ function uploadFile(req, res) {
             var problemIndex = utilLib.getItemIndex(contestDoc.problems, { nickname: req.params.problem_nickname });
             if(problemIndex === null) {
                 return Promise.reject({
-                    code:    status.NOT_FOUND,
-                    message: 'Problem not found.'
+                    status_code: status.NOT_FOUND,
+                    message:     'Problem not found.'
                 });
             }
 
@@ -101,16 +101,16 @@ function removeFile(req, res) {
             var problemIndex = utilLib.getItemIndex(contestDoc.problems, { nickname: req.params.problem_nickname });
             if(problemIndex === null) {
                 return Promise.reject({
-                    code:    status.NOT_FOUND,
-                    message: 'Problem not found.'
+                    status_code: status.NOT_FOUND,
+                    message:     'Problem not found.'
                 });
             }
 
             var problem = contestDoc.problems[problemIndex];
             if(!problem.file) {
                 return Promise.reject({
-                    code:    status.BAD_REQUEST,
-                    message: 'There was no file to be deleted.'
+                    status_code: status.BAD_REQUEST,
+                    message:     'There was no file to be deleted.'
                 });
             }
 

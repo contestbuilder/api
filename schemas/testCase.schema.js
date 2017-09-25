@@ -8,7 +8,7 @@ var testCaseSchema = new Schema({
     deleted_at: {
         type: Date
     },
-    v:          [ testCaseLogSchema ]
+    v: [ testCaseLogSchema ]
 });
 
 module.exports = testCaseSchema;

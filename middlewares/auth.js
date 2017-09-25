@@ -93,8 +93,8 @@ module.exports = function(wagner, baseUrl) {
                     });
                 } else {
                 	return Promise.reject({
-                		code   : status.UNAUTHORIZED,
-                		message: 'Wrong password.'
+                		status_code: status.UNAUTHORIZED,
+                		message:     'Wrong password.'
                 	});
                 }
             })

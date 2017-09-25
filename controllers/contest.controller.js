@@ -1,9 +1,12 @@
 'use strict';
 
-var express   = require('express'),
-    handleLib = require('../libraries/handle.lib'),
-    models    = require('mongoose').models,
-    Contest   = models.Contest;
+var express       = require('express'),
+    handleLib     = require('../libraries/handle.lib'),
+    utilLib       = require('../libraries/util.lib'),
+    contestAgg    = require('../aggregations/contest.aggregation'),
+    contestPolicy = require('../policies/contest.policy'),
+    models        = require('mongoose').models,
+    Contest       = models.Contest;
 
 /**
  * Controllers
@@ -13,21 +16,19 @@ var express   = require('express'),
  * Get all the contests.
  */
 function getAllContests(req, res) {
-    var query = {
-        $or: [
-            {author: req.user._id},
-            {contributors: req.user._id}
-        ]
-    };
-
-    if(req.query.deleted !== 'true') {
-        query.deleted_at = {
-            $exists: false
-        };
+    // filter the contests that the user has permission to see.
+    var contestMatch = contestPolicy.isContributor(null, req.user._id);
+    // show/hide deleted contests.
+    if(req.query.show_deleted === 'true') {
+        contestPolicy.hideDeletedContests(contestMatch, req.user.permissions);
+    } else {
+        contestPolicy.hideDeletedContests(contestMatch);
     }
 
-    Contest.find(query)
-        .populate('author contributors')
+    var aggregation = contestAgg.filterOnlyLastVersions(contestMatch);
+    aggregation = aggregation.concat(contestAgg.populateAuthorAndContributors);
+
+    utilLib.aggregate(Contest, aggregation)
         .then(handleLib.handleReturn.bind(null, res, 'contests'))
         .catch(handleLib.handleError.bind(null, res));
 }
@@ -41,20 +42,14 @@ function createContest(req, res) {
     ])
         .then(function() {
             var contest = new Contest({
-                author      : req.user._id,
-                name        : req.body.name,
-                contributors: [req.user._id],
+                author:       req.user._id,
+                name:         req.body.name,
+                contributors: [ req.user._id ],
                 scheduled_to: req.body.scheduled_to,
-                problems    : []
+                problems:     []
             });
 
             return contest.save();
-        })
-        .then(function(contestDoc) {
-            return handleLib.handleLog(req, contestDoc, {
-                message: 'Contest ' + contestDoc.name + ' criado.',
-                contest: contestDoc._id
-            });
         })
         .then(handleLib.handleReturn.bind(null, res, 'contest'))
         .catch(handleLib.handleError.bind(null, res));
@@ -65,15 +60,16 @@ function createContest(req, res) {
  * Get a specific contest.
  */
 function getContest(req, res) {
-    Contest.findOne({
-        nickname: req.params.nickname,
-        '$or'   : [
-            {author: req.user._id},
-            {contributors: req.user._id}
-        ]
-    })
-        .populate('author contributors')
-        .then(handleLib.handleFindOne)
+    // check if the user has permission to see this contest info.
+    var contestMatch = contestPolicy.isContributor(null, req.user._id);
+    contestPolicy.hideDeletedContests(contestMatch, req.user.permissions);
+    contestPolicy.matchNickname(contestMatch, req.params.nickname);
+
+    var aggregation = contestAgg.filterOnlyLastVersions(contestMatch);
+    aggregation = aggregation.concat(contestAgg.populateAuthorAndContributors);
+
+    utilLib.aggregate(Contest, aggregation)
+        .then(handleLib.handleAggregationFindOne)
         .then(handleLib.handleReturn.bind(null, res, 'contest'))
         .catch(handleLib.handleError.bind(null, res));
 }
@@ -83,28 +79,21 @@ function getContest(req, res) {
  * Edit a contest.
  */
 function editContest(req, res) {
-    Contest.findOne({
-        nickname: req.params.nickname,
-        '$or'   : [
-            {author: req.user._id},
-            {contributors: req.user._id}
-        ]
-    })
+    // check if the user has permission to see this contest info.
+    var contestMatch = contestPolicy.isContributor(null, req.user._id);
+    contestPolicy.hideDeletedContests(contestMatch, req.user.permissions);
+    contestPolicy.matchNickname(contestMatch, req.params.nickname);
+
+    Contest.findOne(contestMatch)
         .then(handleLib.handleFindOne)
         .then(function(contestDoc) {
-            ['name', 'scheduled_to'].forEach(function(key) {
+            [ 'name', 'scheduled_to' ].forEach(function(key) {
                 if(req.body[key] !== undefined) {
                     contestDoc[key] = req.body[key];
                 }
             });
 
             return contestDoc.save();
-        })
-        .then(function(contestDoc) {
-            return handleLib.handleLog(req, contestDoc, {
-                message: 'Contest ' + contestDoc.name + ' editado.',
-                contest: contestDoc._id
-            });
         })
         .then(handleLib.handleReturn.bind(null, res, 'contest'))
         .catch(handleLib.handleError.bind(null, res));
@@ -115,24 +104,17 @@ function editContest(req, res) {
  * Remove a contest.
  */
 function removeContest(req, res) {
-    Contest.findOne({
-        nickname: req.params.nickname,
-        '$or'   : [
-            {author: req.user._id},
-            {contributors: req.user._id}
-        ]
-    })
+    // check if the user has permission to see this contest info.
+    var contestMatch = contestPolicy.isContributor(null, req.user._id);
+    contestPolicy.hideDeletedContests(contestMatch, req.user.permissions);
+    contestPolicy.matchNickname(contestMatch, req.params.nickname);
+
+    Contest.findOne(contestMatch)
         .then(handleLib.handleFindOne)
         .then(function(contestDoc) {
             contestDoc.deleted_at = new Date();
 
             return contestDoc.save();
-        })
-        .then(function(contestDoc) {
-            return handleLib.handleLog(req, contestDoc, {
-                message: 'Contest' + contestDoc.name + ' excluído.',
-                contest: contestDoc._id
-            });
         })
         .then(handleLib.handlePopulate.bind(null, 'author contributors'))
         .then(handleLib.handleReturn.bind(null, res, 'contest'))

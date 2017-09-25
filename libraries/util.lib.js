@@ -38,8 +38,21 @@ function getItemIndex(arr, query) {
 	return null;
 }
 
+function aggregate(model, aggregation) {
+	return new Promise(function(resolve, reject) {
+		model.aggregate(aggregation, function(err, results) {
+			if(err) {
+				return reject(err);
+			}
+
+			return resolve(results);
+		});
+	});
+}
+
 module.exports = {
 	validateQuery: validateQuery,
-	getItem      : getItem,
-	getItemIndex : getItemIndex
+	getItem:       getItem,
+	getItemIndex:  getItemIndex,
+	aggregate:     aggregate
 };

@@ -18,8 +18,8 @@ function getProblemSolutions(req, res) {
             var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
             if(!problem) {
                 return Promise.reject({
-                    code   : status.NOT_FOUND,
-                    message: 'Problem not found.'
+                    status_code: status.NOT_FOUND,
+                    message:     'Problem not found.'
                 });
             }
 
@@ -44,8 +44,8 @@ function createSolution(req, res) {
             var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
             if(!problem) {
                 return Promise.reject({
-                    code   : status.NOT_FOUND,
-                    message: 'Problem not found.'
+                    status_code: status.NOT_FOUND,
+                    message:     'Problem not found.'
                 });
             }
 
@@ -93,16 +93,16 @@ function getSolution(req, res) {
             var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
             if(!problem) {
                 return Promise.reject({
-                    code   : status.NOT_FOUND,
-                    message: 'Problem not found.'
+                    status_code: status.NOT_FOUND,
+                    message:     'Problem not found.'
                 });
             }
 
             var solution = problem && utilLib.getItem(problem.solutions, { nickname: req.params.solution_nickname });
             if(!solution) {
                 return Promise.reject({
-                    code   : status.NOT_FOUND,
-                    message: 'Solution not found.'
+                    status_code: status.NOT_FOUND,
+                    message:     'Solution not found.'
                 });
             }
 
@@ -121,16 +121,16 @@ function removeSolution(req, res) {
             var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
             if(!problem) {
                 return Promise.reject({
-                    code   : status.NOT_FOUND,
-                    message: 'Problem not found.'
+                    status_code: status.NOT_FOUND,
+                    message:     'Problem not found.'
                 });
             }
 
             var solutionIndex = utilLib.getItemIndex(problem.solutions, { nickname: req.params.solution_nickname });
             if(solutionIndex === null) {
                 return Promise.reject({
-                    code   : status.NOT_FOUND,
-                    message: 'Solution not found.'
+                    status_code: status.NOT_FOUND,
+                    message:     'Solution not found.'
                 });
             }
 
@@ -160,16 +160,16 @@ function editSolution(req, res) {
             var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
             if(!problem) {
                 return Promise.reject({
-                    code:    status.NOT_FOUND,
-                    message: 'Problem not found.'
+                    status_code: status.NOT_FOUND,
+                    message:     'Problem not found.'
                 });
             }
 
             var solutionIndex = utilLib.getItemIndex(problem.solutions, { nickname: req.params.solution_nickname });
             if(solutionIndex === null) {
                 return Promise.reject({
-                    code:    status.NOT_FOUND,
-                    message: 'Solution not found.'
+                    status_code: status.NOT_FOUND,
+                    message:     'Solution not found.'
                 });
             }
 
@@ -180,8 +180,8 @@ function editSolution(req, res) {
             && (!req.body.language    || req.body.language == newVersion.language)
             && (!req.body.order       || req.body.order == newVersion.order)) {
                 return Promise.reject({
-                    code:    status.BAD_REQUEST,
-                    message: 'No fields to be changed.'
+                    status_code: status.BAD_REQUEST,
+                    message:     'No fields to be changed.'
                 });
             }
 

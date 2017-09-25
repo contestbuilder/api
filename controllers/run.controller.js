@@ -25,7 +25,8 @@ function runSolutions(req, res) {
         .then(function() {
             return Contest.findOne({
                 nickname: req.params.contest_nickname
-            });
+            })
+            .select('+problems.test_cases.v.input +problems.test_cases.v.output');
         })
         .then(handleLib.handleFindOne)
         .then(function(contestDoc) {
@@ -33,8 +34,8 @@ function runSolutions(req, res) {
             var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
             if(!problem) {
                 return Promise.reject({
-                    code:    status.NOT_FOUND,
-                    message: 'Problem not found.'
+                    status_code: status.NOT_FOUND,
+                    message:     'Problem not found.'
                 });
             }
             var p_lastVersion = versionLib.getLastVersion(problem.v);
@@ -47,8 +48,8 @@ function runSolutions(req, res) {
             });
             if(!solutions || !solutions.length) {
                 return Promise.reject({
-                    code:    status.NOT_FOUND,
-                    message: 'Solutions not found.'
+                    status_code: status.NOT_FOUND,
+                    message:     'Solutions not found.'
                 });
             }
 
@@ -59,8 +60,8 @@ function runSolutions(req, res) {
             });
             if(!test_cases || !test_cases.length) {
                 return Promise.reject({
-                    code:    status.NOT_FOUND,
-                    message: 'Test cases not found.'
+                    status_code: status.NOT_FOUND,
+                    message:     'Test cases not found.'
                 });
             }
 
@@ -134,7 +135,8 @@ function runCheckers(req, res) {
         .then(function() {
             return Contest.findOne({
                 nickname: req.params.contest_nickname
-            });
+            })
+            .select('+problems.test_cases.v.input +problems.test_cases.v.output');
         })
         .then(handleLib.handleFindOne)
         .then(function(contestDoc) {
@@ -142,8 +144,8 @@ function runCheckers(req, res) {
             var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
             if(!problem) {
                 return Promise.reject({
-                    code:    status.NOT_FOUND,
-                    message: 'Problem not found.'
+                    status_code: status.NOT_FOUND,
+                    message:     'Problem not found.'
                 });
             }
             var p_lastVersion = versionLib.getLastVersion(problem.v);
@@ -156,8 +158,8 @@ function runCheckers(req, res) {
             });
             if(!checkers || !checkers.length) {
                 return Promise.reject({
-                    code:    status.NOT_FOUND,
-                    message: 'Checker not found.'
+                    status_code: status.NOT_FOUND,
+                    message:     'Checker not found.'
                 });
             }
 
@@ -168,8 +170,8 @@ function runCheckers(req, res) {
             });
             if(!test_cases || !test_cases.length) {
                 return Promise.reject({
-                    code:    status.NOT_FOUND,
-                    message: 'Test cases not found.'
+                    status_code: status.NOT_FOUND,
+                    message:     'Test cases not found.'
                 });
             }
 

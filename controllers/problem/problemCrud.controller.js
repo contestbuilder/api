@@ -77,8 +77,8 @@ function getProblem(req, res) {
             var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
             if(!problem) {
                 return Promise.reject({
-                    code:    status.NOT_FOUND,
-                    message: 'Problem not found.'
+                    status_code: status.NOT_FOUND,
+                    message:     'Problem not found.'
                 });
             }
 
@@ -97,8 +97,8 @@ function removeProblem(req, res) {
             var problemIndex = utilLib.getItemIndex(contestDoc.problems, { nickname: req.params.problem_nickname });
             if(problemIndex === null) {
                 return Promise.reject({
-                    code:    status.NOT_FOUND,
-                    message: 'Problem not found.'
+                    status_code: status.NOT_FOUND,
+                    message:     'Problem not found.'
                 });
             }
 
@@ -129,8 +129,8 @@ function editProblem(req, res) {
             var problemIndex = utilLib.getItemIndex(contestDoc.problems, { nickname: req.params.problem_nickname });
             if(problemIndex === null) {
                 return Promise.reject({
-                    code:    status.NOT_FOUND,
-                    message: 'Problem not found.'
+                    status_code: status.NOT_FOUND,
+                    message:     'Problem not found.'
                 });
             }
 
@@ -141,8 +141,8 @@ function editProblem(req, res) {
             && (!req.body.description || req.body.description == newVersion.description)
             && (!req.body.order       || req.body.order == newVersion.order)) {
                 return Promise.reject({
-                    code:    status.BAD_REQUEST,
-                    message: 'No fields to be changed.'
+                    status_code: status.BAD_REQUEST,
+                    message:     'No fields to be changed.'
                 });
             }
 

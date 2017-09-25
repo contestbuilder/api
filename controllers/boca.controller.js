@@ -34,8 +34,8 @@ function generateBocaZip(req, res) {
             });
             if(!problems.length) {
                 return Promise.reject({
-                    code:    status.BAD_REQUEST,
-                    message: 'No problems to be added.'
+                    status_code: status.BAD_REQUEST,
+                    message:     'No problems to be added.'
                 });
             }
 
@@ -90,8 +90,8 @@ function downloadZip(req, res) {
         .then(function(contestDoc) {
             if(!contestDoc.bocaZip || !contestDoc.bocaZip.length) {
                 return Promise.reject({
-                    code:    status.BAD_REQUEST,
-                    message: 'No boca files do download.'
+                    status_code: status.BAD_REQUEST,
+                    message:     'No boca files do download.'
                 });
             }
 

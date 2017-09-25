@@ -3,6 +3,8 @@
 var mongoose = require('mongoose'),
     _        = require('underscore');
 
+mongoose.Promise = require('q').Promise;
+
 module.exports = function(db_path) {
     mongoose.connect(db_path);
 
