@@ -61,7 +61,8 @@ function run(source_code, language, time_limit, input, output, context) {
 
 			console.log('Running the code');
 			exec(run_cmd, {
-				timeout: time_limit * 1000
+				timeout:   time_limit * 1000,
+				maxBuffer: 10 * 1024 * 1024
 			}, function(err, stdout, stderr) {
 				if(err) {
 					console.log('Error running the code: ' + err);
