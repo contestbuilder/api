@@ -84,10 +84,13 @@ function writeProblemFiles(contestNickname, problemTempDir, problem) {
 			// description
 			fs.mkdirSync(path.join(problemTempDir, 'description'));
 
+			// problem letter
+			var problemLetter = String.fromCharCode(96 + problemLastVersion.order);
+
 			// if the file was uploaded
 			if(problem.file && problem.file.name) {
 				// description info
-				var problemInfo = 'basename=' + problem.nickname + '\n' +
+				var problemInfo = 'basename=' + problemLetter + '\n' +
 					'fullname=' + problem.name + '\n' +
 					'descfile=' + problem.file.name;
 				fs.writeFileSync(path.join(problemTempDir, 'description', 'problem.info'), problemInfo);
@@ -107,7 +110,7 @@ function writeProblemFiles(contestNickname, problemTempDir, problem) {
 				fs.writeFileSync(descFile, problemLastVersion.description);
 
 				// description info
-				var problemInfo = 'basename=' + problem.nickname + '\n' +
+				var problemInfo = 'basename=' + problemLetter + '\n' +
 					'fullname=' + problem.name + '\n' +
 					'descfile=' + problem.nickname + '.txt';
 				fs.writeFileSync(path.join(problemTempDir, 'description', 'problem.info'), problemInfo);
