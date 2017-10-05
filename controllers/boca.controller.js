@@ -27,6 +27,7 @@ function generateBocaZip(req, res) {
             { contributors: req.user._id }
         ]
     })
+        .select('+problems.test_cases.v.input +problems.test_cases.v.output')
         .then(handleLib.handleFindOne)
         .then(function(contestDoc) {
             problems = contestDoc.problems.filter(function(problem) {
