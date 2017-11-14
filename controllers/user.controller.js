@@ -33,7 +33,7 @@ function createUser(req, res) {
         .then(function() {
             var user = new User({
                 username: req.body.username,
-                email   : req.body.email
+                email:    req.body.email
             });
 
             return user.save();

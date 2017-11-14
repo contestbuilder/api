@@ -79,9 +79,9 @@ module.exports = function(wagner, baseUrl) {
 			.then(function(userDoc) {
                 if(userDoc.comparePassword(req.body.password)) {
                     var token = jwt.sign({
-                        _id        : userDoc._id,
-                        username   : userDoc.username,
-                        email      : userDoc.email,
+                        _id:         userDoc._id,
+                        username:    userDoc.username,
+                        email:       userDoc.email,
                         permissions: userDoc.permissions
                     }, secret, {
                         expiresIn: 7 * 24 * 60 * 60 // expires in a week
@@ -89,7 +89,7 @@ module.exports = function(wagner, baseUrl) {
 
                     return Promise.resolve({
                         success: true,
-                        token  : token
+                        token:   token
                     });
                 } else {
                 	return Promise.reject({

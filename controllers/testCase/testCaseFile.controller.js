@@ -1,6 +1,7 @@
 'use strict';
 
 var express       = require('express'),
+    status        = require('http-status'),
     handleLib     = require('../../libraries/handle.lib'),
     utilLib       = require('../../libraries/util.lib'),
     fileLib       = require('../../libraries/file.lib'),
