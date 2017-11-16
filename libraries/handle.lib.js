@@ -1,7 +1,6 @@
 'use strict';
 
-var status = require('http-status'),
-    Log    = require('mongoose').models.Log;
+var status = require('http-status');
 
 function handleError(res, err) {
     console.trace(err);
@@ -86,18 +85,19 @@ function handleRequired(body, requiredFields) {
 }
 
 function handleLog(req, obj, logParams) {
-    return new Promise(function(resolve, reject) {
-        logParams.author = req.user._id;
-        var log = new Log(logParams);
+    return Promise.resolve(obj);
+    // return new Promise(function(resolve, reject) {
+    //     logParams.author = req.user._id;
+    //     var log = new Log(logParams);
 
-        log.save(function(err, logDoc) {
-            if(err) {
-                return reject(err);
-            }
+    //     log.save(function(err, logDoc) {
+    //         if(err) {
+    //             return reject(err);
+    //         }
 
-            return resolve(obj || logDoc);
-        });
-    });
+    //         return resolve(obj || logDoc);
+    //     });
+    // });
 }
 
 function handlePopulate(properties, obj) {

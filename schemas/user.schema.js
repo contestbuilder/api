@@ -1,31 +1,13 @@
 'use strict';
 
-var mongoose          = require('mongoose'),
-	Schema            = mongoose.Schema,
-    permissionsSchema = require('./permissions.schema');
+module.exports = `
+    type User {
+        id:         Int
+        name:       String
+        username:   String
+        email:      String
+        deleted_at: String
 
-var userSchema = new Schema({
-    name: {
-        type: String
-    },
-    username: {
-        type:     String,
-        unique:   true,
-        required: true
-    },
-    email: {
-        type:     String,
-        unique:   true,
-        required: true
-    },
-    password: {
-        type:   String,
-        select: false
-    },
-    deleted_at: {
-        type: Date
-    },
-    permissions: permissionsSchema
-});
-
-module.exports = userSchema;
+        contests: [Contest]
+    }
+`;

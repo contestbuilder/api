@@ -1,9 +1,11 @@
+'use strict';
+
 var express = require('express');
 
-module.exports = function(wagner, baseUrl) {
+module.exports = function(baseUrl) {
 	var api = express.Router();
 
-	api.use(require('./auth')(wagner, baseUrl));
+	api.use(require('./auth')(baseUrl));
 
 	return api;
 };

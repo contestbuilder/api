@@ -1,22 +1,21 @@
 'use strict';
 
-var mongoose = require('mongoose'),
-    _        = require('underscore');
+var mysql     = require('mysql'),
+    configLib = require('../libraries/config.lib');
 
-mongoose.Promise = require('q').Promise;
+var sqlConfig = configLib.env.sql;
 
-module.exports = function(db_path) {
-    mongoose.connect(db_path);
+global.db = mysql.createConnection({
+    host:     sqlConfig.host,
+    user:     sqlConfig.user,
+    password: sqlConfig.password,
+    database: sqlConfig.database
+});
 
-    var User    = require('./user.model');
-    var Contest = require('./contest.model');
-    var Log     = require('./log.model');
+global.db.connect(function(err) {
+    if(err) {
+        throw err;
+    }
 
-    var models = {
-        User   : User,
-        Contest: Contest,
-        Log    : Log
-    };
-
-    return models;
-};
+    console.log('Connected to db.');
+});

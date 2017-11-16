@@ -5,11 +5,9 @@ var status     = require('http-status'),
     jwt        = require('jsonwebtoken'),
     bodyparser = require('body-parser'),
     secret     = require('../libraries/config.lib').env.secret,
-    handleLib  = require('../libraries/handle.lib'),
-    models     = require('mongoose').models,
-    User       = models.User;
+    handleLib  = require('../libraries/handle.lib');
 
-module.exports = function(wagner, baseUrl) {
+module.exports = function(baseUrl) {
     var api = express.Router();
 
     api.use(bodyparser.json());
@@ -71,35 +69,48 @@ module.exports = function(wagner, baseUrl) {
     });
 
     function login(req, res) {
-        User.findOne({
-            username: req.body.username
-        })
-            .select('_id username email password permissions')
-			.then(handleLib.handleFindOne)
-			.then(function(userDoc) {
-                if(userDoc.comparePassword(req.body.password)) {
-                    var token = jwt.sign({
-                        _id:         userDoc._id,
-                        username:    userDoc.username,
-                        email:       userDoc.email,
-                        permissions: userDoc.permissions
-                    }, secret, {
-                        expiresIn: 7 * 24 * 60 * 60 // expires in a week
-                    });
+        global.db.query(`
+            SELECT *
+              FROM user
+             WHERE username = '${req.body.username}'
+        `, (err, result) => {
+            if(err) {
+                return res.json({ err: 'user not found' });
+            }
 
-                    return Promise.resolve({
-                        success: true,
-                        token:   token
-                    });
-                } else {
-                	return Promise.reject({
-                		status_code: status.UNAUTHORIZED,
-                		message:     'Wrong password.'
-                	});
-                }
-            })
-            .then(handleLib.handleReturn.bind(null, res, null))
-			.catch(handleLib.handleError.bind(null, res));
+            var userDoc = result[0];
+
+            // if(userDoc.comparePassword(req.body.password)) {
+                var token = jwt.sign({
+                    _id:         userDoc.id,
+                    name:        userDoc.name,
+                    username:    userDoc.username,
+                    email:       userDoc.email
+                    // permissions: userDoc.permissions
+                }, secret, {
+                    expiresIn: 7 * 24 * 60 * 60 // expires in a week
+                });
+
+                return res.json({
+                    success: true,
+                    token:   token
+                });
+            // } else {
+            // 	return Promise.reject({
+            // 		status_code: status.UNAUTHORIZED,
+            // 		message:     'Wrong password.'
+            // 	});
+            // }
+        });
+   //      User.findOne({
+   //          username: req.body.username
+   //      })
+   //          .select('_id username email password permissions')
+            // .then(handleLib.handleFindOne)
+            // .then(function(userDoc) {
+   //          })
+   //          .then(handleLib.handleReturn.bind(null, res, null))
+			// .catch(handleLib.handleError.bind(null, res));
     }
 
     api.route(baseUrl + '/login')

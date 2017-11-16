@@ -7,12 +7,14 @@ var status     = require('http-status'),
     utilLib    = require('../../libraries/util.lib'),
     models     = require('mongoose').models,
     Contest    = models.Contest,
+    Problem    = models.Problem,
     Log        = models.Log;
 
 function getContestProblems(req, res) {
     Contest.findOne({
         nickname: req.params.nickname
     })
+        .populate('problems')
         .then(handleLib.handleFindOne)
         .then(function(contestDoc) {
             return Promise.resolve(contestDoc.problems || []);
@@ -22,7 +24,8 @@ function getContestProblems(req, res) {
 }
 
 function createProblem(req, res) {
-    var insertedProblem;
+    var insertedProblem, contest;
+
     handleLib.handleRequired(req.body, [
         'name', 'description'
     ])
@@ -33,6 +36,8 @@ function createProblem(req, res) {
         })
         .then(handleLib.handleFindOne)
         .then(function(contestDoc) {
+            contest = contestDoc;
+
             var firstVersion = {
                 description: req.body.description,
                 time_limit:  req.body.time_limit || 1,
@@ -40,28 +45,23 @@ function createProblem(req, res) {
                 critical:    true
             };
 
-            var problem = {
+            var problem = new Problem({
                 name:       req.body.name,
                 v:          [ firstVersion ],
                 solutions:  [],
                 test_cases: []
-            };
+            });
 
-            contestDoc.problems.push(problem);
-            return contestDoc.save();
+            return problem.save();
+        })
+        .then(function(problemDoc) {
+            insertedProblem = problemDoc;
+
+            contest.problems.push(problemDoc._id);
+
+            return contest.save();
         })
         .then(function(contestDoc) {
-            insertedProblem = utilLib.getItem(contestDoc.problems, { name: req.body.name });
-
-            var log = new Log({
-                author : req.user._id,
-                contest: contestDoc._id,
-                problem: insertedProblem._id,
-                message: 'Problema ' + insertedProblem.name + ' adicionado ao contest ' + contestDoc.name + '.'
-            });
-            return log.save();
-        })
-        .then(function(logDoc) {
             return Promise.resolve(insertedProblem);
         })
         .then(handleLib.handleReturn.bind(null, res, 'problem'))

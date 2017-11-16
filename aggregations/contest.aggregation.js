@@ -21,13 +21,29 @@ function filterOnlyLastVersions(contestMatch, problemMatch, solutionMatch, testC
 			$match: contestMatch || {}
 		},
 
-		// unwind and filter problems
+		// lookup problems
 		{
 			$unwind: {
 				path:                       '$problems',
 				preserveNullAndEmptyArrays: true
 			}
 		}, {
+			$lookup: {
+				from:         'problems',
+				localField:   'problems',
+				foreignField: '_id',
+				as:           'problems'
+			}
+		}, {
+			$addFields: {
+				problems: {
+					$arrayElemAt: [ '$problems', 0 ]
+				}
+			}
+		},
+
+		// filter problems
+		{
 			$addFields: {
 				'problems.current': {
 					$arrayElemAt: [ '$problems.v', -1 ]
