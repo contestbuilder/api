@@ -6,10 +6,14 @@ var graphqlTools = require('graphql-tools'),
 var typeDefs = [
     require('./user.schema'),
     require('./contest.schema'),
+    require('./problem.schema'),
     `
         type Query {
-            user:    [User]
-            contest: [Contest]
+            user: [User]
+
+            contest(id: Int, nickname: String): [Contest]
+
+            problem: [Problem]
         }
     `
 ].join('\n');

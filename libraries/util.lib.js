@@ -50,9 +50,15 @@ function aggregate(model, aggregation) {
 	});
 }
 
+function getNickname(name) {
+	return name.replace(/\s/g, '_').toLowerCase();
+}
+
 module.exports = {
 	validateQuery: validateQuery,
 	getItem:       getItem,
 	getItemIndex:  getItemIndex,
-	aggregate:     aggregate
+	aggregate:     aggregate,
+
+	getNickname: getNickname
 };

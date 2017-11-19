@@ -5,17 +5,20 @@ var mysql     = require('mysql'),
 
 var sqlConfig = configLib.env.sql;
 
-global.db = mysql.createConnection({
-    host:     sqlConfig.host,
-    user:     sqlConfig.user,
-    password: sqlConfig.password,
-    database: sqlConfig.database
+var dbPool = mysql.createPool({
+	connectionLimit: sqlConfig.connectionLimit || 10,
+    host:            sqlConfig.host,
+    user:            sqlConfig.user,
+    password:        sqlConfig.password,
+    database:        sqlConfig.database
 });
 
-global.db.connect(function(err) {
-    if(err) {
-        throw err;
-    }
+global.poolConnection = function(cb, req, res, next) {
+	dbPool.getConnection((err, conn) => {
+		if(err) {
+			return next(err);
+		}
 
-    console.log('Connected to db.');
-});
+		return cb(conn, req, res, next);
+	});
+};

@@ -6,8 +6,7 @@ var express = require('express'),
 
 
 function query(req, res) {
-	console.log(req.user);
-	graphql.graphql(schemas, req.body.query, req.body.variables || {}, { args: req.user }, { a: 3 })
+	graphql.graphql(schemas, req.body.query, req.body.variables || {}, { user: req.user })
 	.then(result => {
 		res.json(result);
 	});

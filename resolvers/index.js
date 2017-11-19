@@ -1,17 +1,21 @@
 'use strict';
 
 var contestResolvers = require('./contest.resolver'),
-    userResolvers    = require('./user.resolver');
+    userResolvers    = require('./user.resolver'),
+    problemResolvers = require('./problem.resolver');
 
 var resolvers = {
     Query: {
         user:    userResolvers.query,
-        contest: contestResolvers.query
+        contest: contestResolvers.query,
+        problem: problemResolvers.query
     },
 
     User: userResolvers.fields,
 
-    Contest: contestResolvers.fields
+    Contest: contestResolvers.fields,
+
+    Problem: problemResolvers.fields
 };
 
 module.exports = resolvers;

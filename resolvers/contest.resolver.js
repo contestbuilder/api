@@ -1,56 +1,59 @@
 'use strict';
 
-var query = (root, args) => {
-    console.log(root, args);
-    return new Promise((resolve, reject) => {
-        global.db.query(`
-            SELECT c.*
-              FROM contest
-             INNER JOIN contest_contributor cb
-                ON cb.contest_id =  c.id
-             WHERE cb.user_id = ${args.me.id}
-        `, (err, result) => {
-            if(err) {
-                return reject(err);
-            }
+var utilQuery = require('../queries/util.query');
 
-            return resolve(result);
-        });
-    });
+var query = (obj, args, context) => {
+    return utilQuery.select(
+        'c.*',
+        'contest c',
+        [{
+            table:     'contest_contributor cb',
+            condition: 'cb.contest_id = c.id'
+        }],
+        {
+            'cb.user_id': context.user._id,
+            'c.id':       args.id,
+            'c.nickname': args.nickname
+        }
+    );
 };
 
 var fields = {
-    author: (parent, args) => {
-        return new Promise((resolve, reject) => {
-            global.db.query(`
-                SELECT *
-                  FROM user
-                 WHERE id=${parent.author_id}
-            `, (err, result) => {
-                if(err) {
-                    return reject(err);
-                }
-
-                return resolve(result[0]);
-            });
-        });
+    author: (parent, args, context) => {
+        return utilQuery.select(
+            '*',
+            'user',
+            null,
+            {
+                'id': parent.author_id
+            }
+        );
     },
     contributors: (parent, args) => {
-        return new Promise((resolve, reject) => {
-            global.db.query(`
-                SELECT u.*
-                  FROM user u
-                 INNER JOIN contest_contributor cb
-                    ON cb.user_id = u.id
-                 WHERE cb.contest_id = ${parent.id}
-            `, (err, result) => {
-                if(err) {
-                    return reject(err);
-                }
-
-                return resolve(result);
-            });
-        });
+        return utilQuery.select(
+            'u.*',
+            'user u',
+            [{
+                table:     'contest_contributor cb',
+                condition: 'cb.user_id = u.id'
+            }],
+            {
+                'cb.contest_id': parent.id
+            }
+        );
+    },
+    problems: (parent, args) => {
+        return utilQuery.select(
+            'p.*',
+            'problem p',
+            [{
+                table:     'contest_problem cp',
+                condition: 'cp.problem_id = p.id'
+            }],
+            {
+                'cp.contest_id': parent.id
+            }
+        );
     }
 };
 

@@ -10,7 +10,7 @@ api.use(bodyparser.json());
 
 // crud
 // api.use(require('./user.controller'));
-// api.use(require('./contest.controller'));
+api.use(require('./contest.controller'));
 // api.use(require('./contributor.controller'));
 // api.use(require('./problem/problemCrud.controller'));
 // api.use(require('./problem/problemFile.controller'));
@@ -28,10 +28,20 @@ api.use(bodyparser.json());
 // graphql
 api.use(require('./graphql.controller'));
 
-api.use(function(req, res) {
-    return res
-        .status(status.NOT_FOUND)
-        .json({ error: 'Url not found' });
+// route not found.
+api.use(function(req, res, next) {
+	return next({
+		status: status.NOT_FOUND,
+		error:  'Url not found.'
+	});
+});
+
+// error handling.
+api.use(function(err, req, res, next) {
+	return res.status(err.status || 500)
+	.json({
+		error: err.error
+	});
 });
 
 module.exports = api;
