@@ -43,6 +43,57 @@ async function createContest(conn, req, res, next) {
 	}
 }
 
+/**
+ * Edit a contest.
+ */
+async function editContest(conn, req, res, next) {
+	try {
+		var contest = await utilQuery.selectOne(conn, '*', 'contest', null, {
+			nickname: req.params.nickname
+		});
+
+		var fieldsToEdit = {};
+		[
+			'name', 'scheduled_to'
+		].forEach(paramName => {
+			if(req.body[paramName] !== undefined) {
+				fieldsToEdit[paramName] = req.body[paramName];
+			}
+		});
+
+		await utilQuery.edit(conn, 'contest', fieldsToEdit, {
+			id: contest.id
+		});
+
+		return res.json({
+			success: true
+		});
+	} catch(err) {
+		return next({
+			error: err
+		});
+	} finally {
+		conn.release();
+	}
+}
+
+/**
+ * Disable a contest.
+ */
+ async function removeContest(conn, req, res, next) {
+ 	try {
+ 		return res.json({
+ 			success: true
+ 		});
+ 	} catch(err) {
+ 		return next({
+ 			error: err
+ 		});
+ 	} finally {
+ 		conn.release();
+ 	}
+ }
+
 
 /**
  * Routes
@@ -52,5 +103,9 @@ var router = express.Router();
 
 router.route('/contest/')
     .post(global.poolConnection.bind(null, createContest));
+
+router.route('/contest/:nickname')
+    .put(global.poolConnection.bind(null, editContest))
+    .delete(global.poolConnection.bind(null, removeContest));
 
 module.exports = router;

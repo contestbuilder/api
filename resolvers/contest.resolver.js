@@ -4,6 +4,7 @@ var utilQuery = require('../queries/util.query');
 
 var query = (obj, args, context) => {
     return utilQuery.select(
+        context.conn,
         'c.*',
         'contest c',
         [{
@@ -21,6 +22,7 @@ var query = (obj, args, context) => {
 var fields = {
     author: (parent, args, context) => {
         return utilQuery.select(
+            context.conn,
             '*',
             'user',
             null,
@@ -29,8 +31,9 @@ var fields = {
             }
         );
     },
-    contributors: (parent, args) => {
+    contributors: (parent, args, context) => {
         return utilQuery.select(
+            context.conn,
             'u.*',
             'user u',
             [{
@@ -42,8 +45,9 @@ var fields = {
             }
         );
     },
-    problems: (parent, args) => {
+    problems: (parent, args, context) => {
         return utilQuery.select(
+            context.conn,
             'p.*',
             'problem p',
             [{

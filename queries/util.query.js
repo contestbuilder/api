@@ -1,8 +1,8 @@
 'use strict';
 
-function query(queryStr) {
+function query(conn, queryStr) {
 	return new Promise((resolve, reject) => {
-		global.db.query(queryStr, (err, response) => {
+		conn.query(queryStr, (err, response) => {
 			if(err) {
 				return reject(err);
 			}
@@ -12,7 +12,7 @@ function query(queryStr) {
 	});
 }
 
-function select(fields, tableName, joins, conditions, debug) {
+function select(conn, fields, tableName, joins, conditions, debug) {
 	return new Promise((resolve, reject) => {
 		var queryStr = 'SELECT ';
 
@@ -33,43 +33,14 @@ function select(fields, tableName, joins, conditions, debug) {
 		});
 
 		// conditions
-		if(conditions) {
-			queryStr += ' WHERE \n';
-			var conditionsCount = 0;
-
-			if(Array.isArray(conditions)) {
-				conditions.forEach(condition => {
-					if(condition.value === undefined) {
-						return;
-					}
-
-					if(conditionsCount++) {
-						queryStr += '   AND ';
-					}
-
-					queryStr += condition.key + ' = ' + global.db.escape(condition.value) + '\n';
-				});
-			} else {
-				Object.keys(conditions).forEach(conditionKey => {
-					if(conditions[conditionKey] === undefined) {
-						return;
-					}
-
-					if(conditionsCount++) {
-						queryStr += '   AND ';
-					}
-
-					queryStr += conditionKey + ' = ' + global.db.escape(conditions[conditionKey]) + '\n';
-				});
-			}
-		}
+		queryStr += getConditionStr(conn, conditions);
 
 		if(debug) {
 			console.log(queryStr);
 		}
 
 		// select it all
-		global.db.query(queryStr, (err, response) => {
+		conn.query(queryStr, (err, response) => {
 			if(err) {
 				return reject(err);
 			}
@@ -79,9 +50,9 @@ function select(fields, tableName, joins, conditions, debug) {
 	});
 }
 
-function selectOne(fields, tableName, joins, conditions, debug) {
+function selectOne(conn, fields, tableName, joins, conditions, debug) {
 	return new Promise((resolve, reject) => {
-		select(fields, tableName, joins, conditions, debug)
+		select(conn, fields, tableName, joins, conditions, debug)
 		.then(response => {
 			if(Array.isArray(response)) {
 				if(response.length < 1) {
@@ -95,16 +66,52 @@ function selectOne(fields, tableName, joins, conditions, debug) {
 		})
 		.catch(err => {
 			return reject(err);
-		})
-	})
+		});
+	});
 }
 
-function insert(connection, table, data) {
+function insert(conn, table, data) {
 	return new Promise((resolve, reject) => {
-		connection.query(`
+		conn.query(`
 			INSERT INTO ${table}
 			   SET ?
 		`, data, (err, results, fields) => {
+			if(err) {
+				return reject(err);
+			}
+
+			return resolve(results);
+		});
+	});
+}
+
+function edit(conn, table, fields, conditions) {
+	return new Promise((resolve, reject) => {
+		var conditionStr = getConditionStr(conn, conditions);
+
+		conn.query(`
+			UPDATE ${table}
+			   SET ?
+			 ${conditionStr}
+		`, fields, (err, results, fields) => {
+			if(err) {
+				return reject(err);
+			}
+
+			return resolve(results);
+		});
+	});
+}
+
+function softDelete(conn, table, conditions, deletedAt) {
+	return new Promise((resolve, reject) => {
+		var conditionStr = getConditionStr(conn, conditions);
+
+		conn.query(`
+			UPDATE ${table}
+			   SET deleted_at = ${deletedAt || new Date()}
+			 ${conditionStr}
+		`, (err, results, fields) => {
 			if(err) {
 				return reject(err);
 			}
@@ -146,13 +153,50 @@ function rollback(conn) {
 	});
 }
 
+function getConditionStr(conn, conditions) {
+	var conditionStr = '';
+	if(conditions) {
+		conditionStr += ' WHERE \n';
+		var conditionsCount = 0;
+
+		if(Array.isArray(conditions)) {
+			conditions.forEach(condition => {
+				if(condition.value === undefined) {
+					return;
+				}
+
+				if(conditionsCount++) {
+					conditionStr += '   AND ';
+				}
+
+				conditionStr += condition.key + ' = ' + conn.escape(condition.value) + '\n';
+			});
+		} else {
+			Object.keys(conditions).forEach(conditionKey => {
+				if(conditions[conditionKey] === undefined) {
+					return;
+				}
+
+				if(conditionsCount++) {
+					conditionStr += '   AND ';
+				}
+
+				conditionStr += conditionKey + ' = ' + conn.escape(conditions[conditionKey]) + '\n';
+			});
+		}
+	}
+	return conditionStr;
+}
+
 module.exports = {
 	query: query,
 
 	select:    select,
 	selectOne: selectOne,
 
-	insert: insert,
+	insert:     insert,
+	edit:       edit,
+	softDelete: softDelete,
 
 	beginTransaction: beginTransaction,
 	commit:           commit,

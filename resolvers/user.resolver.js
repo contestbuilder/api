@@ -2,13 +2,18 @@
 
 var utilQuery = require('../queries/util.query');
 
-var query = (root, args) => {
-    return utilQuery.select('*', 'user');
+var query = (root, args, context) => {
+    return utilQuery.select(
+        context.conn,
+        '*',
+        'user'
+    );
 };
 
 var fields = {
-    contests: (parent, args) => {
+    contests: (parent, args, context) => {
         return utilQuery.select(
+            context.conn,
             'c.*',
             'contest c',
             [{

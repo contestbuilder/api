@@ -5,9 +5,16 @@ var express = require('express'),
 	schemas = require('../schemas');
 
 
-function query(req, res) {
-	graphql.graphql(schemas, req.body.query, req.body.variables || {}, { user: req.user })
-	.then(result => {
+function query(conn, req, res, next) {
+	graphql.graphql(
+		schemas,
+		req.body.query,
+		req.body.variables || {},
+		{
+			conn: conn,
+			user: req.user
+		}
+	).then(result => {
 		res.json(result);
 	});
 }
@@ -21,6 +28,6 @@ function query(req, res) {
 var router = express.Router();
 
 router.route('/graphql')
-	.post(query);
+	.post(global.poolConnection.bind(null, query));
 
 module.exports = router;
