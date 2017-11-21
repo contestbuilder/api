@@ -1,22 +1,10 @@
 'use strict';
 
-var utilQuery = require('../queries/util.query');
+var utilQuery    = require('../queries/util.query'),
+    contestQuery = require('../queries/contest.query');
 
 var query = (obj, args, context) => {
-    return utilQuery.select(
-        context.conn,
-        'c.*',
-        'contest c',
-        [{
-            table:     'contest_contributor cb',
-            condition: 'cb.contest_id = c.id'
-        }],
-        {
-            'cb.user_id': context.user._id,
-            'c.id':       args.id,
-            'c.nickname': args.nickname
-        }
-    );
+    return contestQuery.getContests(context.conn, args, context.user);
 };
 
 var fields = {

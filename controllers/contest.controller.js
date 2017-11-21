@@ -1,8 +1,9 @@
 'use strict';
 
-var express   = require('express'),
-	utilQuery = require('../queries/util.query'),
-	utilLib   = require('../libraries/util.lib');
+var express      = require('express'),
+	utilQuery    = require('../queries/util.query'),
+	contestQuery = require('../queries/contest.query'),
+	utilLib      = require('../libraries/util.lib');
 
 
 /**
@@ -35,6 +36,7 @@ async function createContest(conn, req, res, next) {
 		});
 	} catch(err) {
 		await utilQuery.rollback(conn);
+
 		return next({
 			error: err
 		});
@@ -48,9 +50,9 @@ async function createContest(conn, req, res, next) {
  */
 async function editContest(conn, req, res, next) {
 	try {
-		var contest = await utilQuery.selectOne(conn, '*', 'contest', null, {
+		var contest = await contestQuery.getOneContest(conn, {
 			nickname: req.params.nickname
-		});
+		}, req.user);
 
 		var fieldsToEdit = {};
 		[
@@ -82,6 +84,16 @@ async function editContest(conn, req, res, next) {
  */
  async function removeContest(conn, req, res, next) {
  	try {
+		var contest = await contestQuery.getOneContest(conn, {
+			nickname: req.params.nickname
+		}, req.user);
+
+		await utilQuery.edit(conn, 'contest', {
+			deleted_at: new Date()
+		}, {
+			id: contest.id
+		});
+
  		return res.json({
  			success: true
  		});
