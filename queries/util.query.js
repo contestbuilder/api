@@ -169,7 +169,15 @@ function getConditionStr(conn, conditions) {
 					conditionStr += '   AND ';
 				}
 
-				conditionStr += condition.key + ' = ' + conn.escape(condition.value) + '\n';
+				if(typeof condition.value === 'object') {
+					if(condition.value.$isNull !== undefined) {
+						conditionStr += condition.key + ' is ' + 
+							(condition.value.$isNull === true ? '' : 'not') + 
+							' null\n';
+					}
+				} else {
+					conditionStr += condition.key + ' = ' + conn.escape(condition.value) + '\n';
+				}
 			});
 		} else {
 			Object.keys(conditions).forEach(conditionKey => {
@@ -181,7 +189,15 @@ function getConditionStr(conn, conditions) {
 					conditionStr += '   AND ';
 				}
 
-				conditionStr += conditionKey + ' = ' + conn.escape(conditions[conditionKey]) + '\n';
+				if(typeof conditions[conditionKey] === 'object') {
+					if(conditions[conditionKey].$isNull !== undefined) {
+						conditionStr += conditionKey + ' is ' + 
+							(conditions[conditionKey].$isNull === true ? '' : 'not') + 
+							' null\n';
+					}
+				} else {
+					conditionStr += conditionKey + ' = ' + conn.escape(conditions[conditionKey]) + '\n';
+				}
 			});
 		}
 	}

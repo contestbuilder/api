@@ -38,7 +38,27 @@ function getOneContest(conn, args, user) {
 	);
 }
 
+// count how many problems there are on this contest.
+function countProblems(conn, args, user) {
+	return utilQuery.selectOne(
+		conn,
+		'count(*) as count',
+		'problem p',
+		[{
+			table:     'contest_problem cp',
+			condition: 'cp.problem_id = p.id'
+		}],
+		{
+			'cp.contest_id': args.contest_id,
+			'p.deleted_at': {
+				$isNull: true
+			}
+		}
+	);
+}
+
 module.exports = {
 	getContests:   getContests,
-	getOneContest: getOneContest
+	getOneContest: getOneContest,
+	countProblems: countProblems
 };
