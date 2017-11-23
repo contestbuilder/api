@@ -4,6 +4,9 @@ var graphqlTools = require('graphql-tools'),
     resolvers    = require('../resolvers');
 
 var typeDefs = [
+    `
+        scalar Date
+    `,
     require('./user.schema'),
     require('./contest.schema'),
     require('./problem.schema'),

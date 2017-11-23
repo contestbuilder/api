@@ -3,13 +3,13 @@
 var utilQuery    = require('../queries/util.query'),
     contestQuery = require('../queries/contest.query');
 
-var query = (obj, args, context) => {
+var query = (args, something, context) => {
     return contestQuery.getContests(context.conn, args, context.user);
 };
 
 var fields = {
     author: (parent, args, context) => {
-        return utilQuery.select(
+        return utilQuery.selectOne(
             context.conn,
             '*',
             'user',

@@ -16,6 +16,11 @@ function query(conn, req, res, next) {
 		}
 	).then(result => {
 		res.json(result);
+	}).catch(err => {
+		res.json({
+			success: false,
+			error:   err
+		});
 	});
 }
 

@@ -10,6 +10,6 @@ module.exports = `
         file_url:     String
         time_limit:   Int
         order:        Int
-        deleted_at:   String
+        deleted_at:   Date
     }
 `;

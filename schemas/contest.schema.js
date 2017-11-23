@@ -6,9 +6,9 @@ module.exports = `
         author:       User
         name:         String
         nickname:     String
-        created_at:   String
+        created_at:   Date
         scheduled_to: Int
-        deleted_at:   String
+        deleted_at:   Date
 
         contributors: [User]
         problems:     [Problem]
