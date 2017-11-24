@@ -16,6 +16,7 @@ var express      = require('express'),
 async function createContest(conn, req, res, next) {
 	await utilQuery.beginTransaction(conn);
 	try {
+		// new contest object.
 		var newContest = {
 			author_id:  req.user._id,
 			name:       req.body.name,
@@ -23,13 +24,24 @@ async function createContest(conn, req, res, next) {
 			created_at: new Date()
 		};
 
-		newContest = await utilQuery.insert(conn, 'contest', newContest);
+		// insert the contest.
+		var insertResult = await utilQuery.insert(conn, 'contest', newContest);
+
+		// insert the author (current logged user) as a contributor.
 		await utilQuery.insert(conn, 'contest_contributor', {
-			contest_id: newContest.insertId,
+			contest_id: insertResult.insertId,
 			user_id:    req.user._id
 		});
+
+		// commit changes.
 		await utilQuery.commit(conn);
 
+		// get the inserted contest.
+		newContest = await contestQuery.getOneContest(conn, {
+			contest_nickname: newContest.nickname
+		}, req.user);
+
+		// return it.
 		return res.json({
 			success: true,
 			contest: newContest
@@ -51,7 +63,7 @@ async function createContest(conn, req, res, next) {
 async function editContest(conn, req, res, next) {
 	try {
 		var contest = await contestQuery.getOneContest(conn, {
-			nickname: req.params.nickname
+			contest_nickname: req.params.nickname
 		}, req.user);
 
 		var fieldsToEdit = {};
@@ -85,7 +97,7 @@ async function editContest(conn, req, res, next) {
  async function removeContest(conn, req, res, next) {
  	try {
 		var contest = await contestQuery.getOneContest(conn, {
-			nickname: req.params.nickname
+			contest_nickname: req.params.nickname
 		}, req.user);
 
 		await utilQuery.edit(conn, 'contest', {

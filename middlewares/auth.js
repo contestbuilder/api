@@ -5,7 +5,8 @@ var status     = require('http-status'),
     jwt        = require('jsonwebtoken'),
     bodyparser = require('body-parser'),
     secret     = require('../libraries/config.lib').env.secret,
-    handleLib  = require('../libraries/handle.lib');
+    handleLib  = require('../libraries/handle.lib'),
+    utilQuery  = require('../queries/util.query');
 
 module.exports = function(baseUrl) {
     var api = express.Router();
@@ -21,7 +22,8 @@ module.exports = function(baseUrl) {
     });
 
     api.options('/*', function(req, res, next) {
-        res.sendStatus(200);
+        console.log('options');
+        return res.sendStatus(200);
     });
 
     // check if the user has a token
@@ -68,15 +70,13 @@ module.exports = function(baseUrl) {
         });
     });
 
-    function login(req, res) {
-        global.db.query(`
-            SELECT *
-              FROM user
-             WHERE username = '${req.body.username}'
-        `, (err, result) => {
-            if(err) {
-                return res.json({ err: 'user not found' });
-            }
+    async function login(conn, req, res, next) {
+        try {
+            var result = await utilQuery.query(conn, `
+                SELECT *
+                  FROM user
+                 WHERE username = '${req.body.username}'
+            `);
 
             var userDoc = result[0];
 
@@ -96,12 +96,18 @@ module.exports = function(baseUrl) {
                     token:   token
                 });
             // } else {
-            // 	return Promise.reject({
-            // 		status_code: status.UNAUTHORIZED,
-            // 		message:     'Wrong password.'
-            // 	});
+            //  return Promise.reject({
+            //      status_code: status.UNAUTHORIZED,
+            //      message:     'Wrong password.'
+            //  });
             // }
-        });
+        } catch(err) {
+            return next({
+                error: err
+            });
+        } finally {
+            conn.release();
+        }
    //      User.findOne({
    //          username: req.body.username
    //      })
@@ -114,7 +120,7 @@ module.exports = function(baseUrl) {
     }
 
     api.route(baseUrl + '/login')
-    	.post(login);
+    	.post(global.poolConnection.bind(null, login));
 
     return api;
 };

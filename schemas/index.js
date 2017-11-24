@@ -16,7 +16,7 @@ var typeDefs = [
 
             contest(id: Int, nickname: String): [Contest]
 
-            problem: [Problem]
+            problem(id: Int, nickname: String): [Problem]
         }
     `
 ].join('\n');

@@ -17,14 +17,17 @@ var express      = require('express'),
 async function createProblem(conn, req, res, next) {
 	await utilQuery.beginTransaction(conn);
 	try {
+		// get the contest in which the problem will be inserted.
 		var contest = await contestQuery.getOneContest(conn, {
-			nickname: req.params.nickname
+			contest_nickname: req.params.nickname
 		}, req.user);
 
+		// count how many active problems there on this contest.
 		var currentProblemsCount = await contestQuery.countProblems(conn, {
 			contest_id: contest.id
 		}, req.user);
 
+		// new problem object.
 		var newProblem = {
 			name:        req.body.name,
 			nickname:    utilLib.getNickname(req.body.name),
@@ -34,13 +37,24 @@ async function createProblem(conn, req, res, next) {
 			author_id:   req.user._id
 		};
 
-		newProblem = await utilQuery.insert(conn, 'problem', newProblem);
+		// insert the problem.
+		var insertResult = await utilQuery.insert(conn, 'problem', newProblem);
+
+		// add the problem to the contest.
 		await utilQuery.insert(conn, 'contest_problem', {
 			contest_id: contest.id,
-			problem_id: newProblem.insertId
+			problem_id: insertResult.insertId
 		});
+
+		// commit changes.
 		await utilQuery.commit(conn);
 
+		// get the inserted problem.
+		newProblem = await problemQuery.getOneProblem(conn, {
+			nickname: newProblem.nickname
+		}, req.user);
+
+		// return it.
 		return res.json({
 			success: true,
 			problem: newProblem
@@ -61,10 +75,12 @@ async function createProblem(conn, req, res, next) {
  */
 async function editProblem(conn, req, res, next) {
 	try {
+		// get the contest that has the problem being edited.
 		var contest = await contestQuery.getOneContest(conn, {
-			nickname: req.params.nickname
+			contest_nickname: req.params.nickname
 		}, req.user);
 
+		// get the problem to be edited.
 		var problem = await problemQuery.getOneProblem(conn, {
 			nickname: req.params.problem_nickname,
 			deleted_at: {
@@ -72,21 +88,33 @@ async function editProblem(conn, req, res, next) {
 			}
 		}, req.user);
 
+		// identify the fields that will be edited.
 		var fieldsToEdit = {};
 		[
-			'time_limit', 'description'
+			'name', 'time_limit', 'description'
 		].forEach(paramName => {
 			if(req.body[paramName] !== undefined) {
 				fieldsToEdit[paramName] = req.body[paramName];
 			}
 		});
 
+		// edit the problem.
 		await utilQuery.edit(conn, 'problem', fieldsToEdit, {
 			id: problem.id
 		});
 
+		// get the problem updated.
+		problem = await problemQuery.getOneProblem(conn, {
+			nickname: req.params.problem_nickname,
+			deleted_at: {
+				$isNull: true
+			}
+		}, req.user);
+
+		// return it.
 		return res.json({
-			success: true
+			success: true,
+			problem: problem
 		});
 	} catch(err) {
 		return next({
@@ -104,7 +132,7 @@ async function removeProblem(conn, req, res, next) {
 	await utilQuery.beginTransaction(conn);
 	try {
 		var contest = await contestQuery.getOneContest(conn, {
-			nickname: req.params.nickname
+			contest_nickname: req.params.nickname
 		}, req.user);
 
 		var problem = await problemQuery.getOneProblem(conn, {
