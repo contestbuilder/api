@@ -20,6 +20,9 @@ function getSolutions(conn, args, user) {
 		}, {
 			table:     'contest c',
 			condition: 'cp.contest_id = c.id'
+		}, {
+			table:     'problem p',
+			condition: 'p.id = ps.problem_id'
 		}],
 		{
 			'cc.user_id': user._id,

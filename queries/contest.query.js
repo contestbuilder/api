@@ -14,7 +14,7 @@ function getContests(conn, args, user) {
         }],
 		{
 			'cb.user_id': user._id,
-            'c.id':       args.id,
+            'c.id':       args.contest_id,
             'c.nickname': args.contest_nickname
 		}
 	);
@@ -32,7 +32,7 @@ function getOneContest(conn, args, user) {
         }],
 		{
 			'cb.user_id': user._id,
-            'c.id':       args.id,
+            'c.id':       args.contest_id,
             'c.nickname': args.contest_nickname
 		}
 	);

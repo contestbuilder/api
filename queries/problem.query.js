@@ -43,14 +43,38 @@ function getOneProblem(conn, args, user) {
 		}],
 		{
 			'cc.user_id':   user._id,
-			'p.id':         args.id,
-			'p.nickname':   args.nickname,
+			'p.id':         args.problem_id,
+			'p.nickname':   args.problem_nickname,
 			'p.deleted_at': args.deleted_at
 		}
 	);
 }
 
+// count how many problems there are on this contest.
+function countSolutions(conn, args, user) {
+	return utilQuery.selectOne(
+		conn,
+		'count(*) as count',
+		'solution s',
+		[{
+			table:     'problem_solution ps',
+			condition: 'ps.solution_id = s.id'
+		}, {
+			table:     'contest_problem cp',
+			condition: 'cp.problem_id = ps.problem_id'
+		}],
+		{
+			'cp.contest_id': args.contest_id,
+			'ps.problem_id': args.problem_id,
+			's.deleted_at': {
+				$isNull: true
+			}
+		}
+	);
+}
+
 module.exports = {
-	getProblems:   getProblems,
-	getOneProblem: getOneProblem
+	getProblems:    getProblems,
+	getOneProblem:  getOneProblem,
+	countSolutions: countSolutions
 };

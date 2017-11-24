@@ -22,7 +22,6 @@ module.exports = function(baseUrl) {
     });
 
     api.options('/*', function(req, res, next) {
-        console.log('options');
         return res.sendStatus(200);
     });
 

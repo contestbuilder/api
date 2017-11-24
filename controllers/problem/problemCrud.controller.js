@@ -51,7 +51,7 @@ async function createProblem(conn, req, res, next) {
 
 		// get the inserted problem.
 		newProblem = await problemQuery.getOneProblem(conn, {
-			nickname: newProblem.nickname
+			problem_nickname: newProblem.nickname
 		}, req.user);
 
 		// return it.
@@ -82,7 +82,7 @@ async function editProblem(conn, req, res, next) {
 
 		// get the problem to be edited.
 		var problem = await problemQuery.getOneProblem(conn, {
-			nickname: req.params.problem_nickname,
+			problem_nickname: req.params.problem_nickname,
 			deleted_at: {
 				$isNull: true
 			}
@@ -105,7 +105,7 @@ async function editProblem(conn, req, res, next) {
 
 		// get the problem updated.
 		problem = await problemQuery.getOneProblem(conn, {
-			nickname: req.params.problem_nickname,
+			problem_nickname: req.params.problem_nickname,
 			deleted_at: {
 				$isNull: true
 			}
@@ -138,7 +138,7 @@ async function removeProblem(conn, req, res, next) {
 
 		// get the problem to be removed.
 		var problem = await problemQuery.getOneProblem(conn, {
-			nickname: req.params.problem_nickname,
+			problem_nickname: req.params.problem_nickname,
 			deleted_at: {
 				$isNull: true
 			}
@@ -172,8 +172,8 @@ async function removeProblem(conn, req, res, next) {
 		await utilQuery.commit(conn);
 
 		// get the problem updated.
-		var problem = await problemQuery.getOneProblem(conn, {
-			nickname: req.params.problem_nickname,
+		problem = await problemQuery.getOneProblem(conn, {
+			problem_nickname: req.params.problem_nickname,
 			deleted_at: {
 				$isNull: true
 			}
