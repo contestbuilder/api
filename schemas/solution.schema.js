@@ -1,25 +1,15 @@
 'use strict';
 
-var mongoose          = require('mongoose'),
-	Schema            = mongoose.Schema,
-    runSchema         = require('./run.schema'),
-    solutionLogSchema = require('./solutionLog.schema');
-
-var solutionSchema = new Schema({
-    name:       {
-        type:     String,
-        required: true,
-        unique:   true
-    },
-    nickname:   {
-        type:   String,
-        unique: true
-    },
-    deleted_at: {
-        type: Date
-    },
-    v:          [ solutionLogSchema ],
-    run:        [ runSchema ]
-});
-
-module.exports = solutionSchema;
+module.exports = `
+    type Solution {
+        id:               Int
+        author:           User
+        name:             String
+        nickname:         String
+        language:         String
+        expected_verdict: String
+        source_code:      String
+        order:            Int
+        deleted_at:       Date
+    }
+`;

@@ -11,5 +11,7 @@ module.exports = `
         time_limit:   Int
         order:        Int
         deleted_at:   Date
+
+        solutions: [Solution]
     }
 `;

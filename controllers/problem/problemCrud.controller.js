@@ -131,10 +131,12 @@ async function editProblem(conn, req, res, next) {
 async function removeProblem(conn, req, res, next) {
 	await utilQuery.beginTransaction(conn);
 	try {
+		// get the contest that has the problem that will be removed.
 		var contest = await contestQuery.getOneContest(conn, {
 			contest_nickname: req.params.nickname
 		}, req.user);
 
+		// get the problem to be removed.
 		var problem = await problemQuery.getOneProblem(conn, {
 			nickname: req.params.problem_nickname,
 			deleted_at: {
@@ -142,6 +144,7 @@ async function removeProblem(conn, req, res, next) {
 			}
 		}, req.user);
 
+		// remove the problem.
 		await utilQuery.edit(conn, 'problem', {
 			deleted_at: new Date()
 		}, {
@@ -168,8 +171,18 @@ async function removeProblem(conn, req, res, next) {
 		}
 		await utilQuery.commit(conn);
 
+		// get the problem updated.
+		var problem = await problemQuery.getOneProblem(conn, {
+			nickname: req.params.problem_nickname,
+			deleted_at: {
+				$isNull: true
+			}
+		}, req.user);
+
+		// return it.
 		return res.json({
-			success: true
+			success: true,
+			problem: problem
 		});
 	} catch(err) {
 		await utilQuery.rollback(conn);

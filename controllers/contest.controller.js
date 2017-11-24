@@ -62,10 +62,12 @@ async function createContest(conn, req, res, next) {
  */
 async function editContest(conn, req, res, next) {
 	try {
+		// get the contest.
 		var contest = await contestQuery.getOneContest(conn, {
 			contest_nickname: req.params.nickname
 		}, req.user);
 
+		// identify the fields that will be edited.
 		var fieldsToEdit = {};
 		[
 			'name', 'scheduled_to'
@@ -75,12 +77,20 @@ async function editContest(conn, req, res, next) {
 			}
 		});
 
+		// edit the contest.
 		await utilQuery.edit(conn, 'contest', fieldsToEdit, {
 			id: contest.id
 		});
 
+		// get the contest updated.
+		contest = await contestQuery.getOneContest(conn, {
+			contest_nickname: req.params.nickname
+		}, req.user);
+
+		// return it.
 		return res.json({
-			success: true
+			success: true,
+			contest: contest
 		});
 	} catch(err) {
 		return next({
@@ -96,18 +106,27 @@ async function editContest(conn, req, res, next) {
  */
  async function removeContest(conn, req, res, next) {
  	try {
+ 		// get the contest to be removed.
 		var contest = await contestQuery.getOneContest(conn, {
 			contest_nickname: req.params.nickname
 		}, req.user);
 
+		// remove it.
 		await utilQuery.edit(conn, 'contest', {
 			deleted_at: new Date()
 		}, {
 			id: contest.id
 		});
 
+ 		// get the contest updated.
+		contest = await contestQuery.getOneContest(conn, {
+			contest_nickname: req.params.nickname
+		}, req.user);
+
+		// return it.
  		return res.json({
- 			success: true
+ 			success: true,
+ 			contest: contest
  		});
  	} catch(err) {
  		return next({

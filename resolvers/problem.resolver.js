@@ -18,6 +18,20 @@ var fields = {
                 'id': parent.author_id
             }
         );
+    },
+    solutions: (parent, args, context) => {
+        return utilQuery.select(
+            context.conn,
+            's.*',
+            'solution s',
+            [{
+                table:     'problem_solution ps',
+                condition: 'ps.solution_id = s.id'
+            }],
+            {
+                'ps.problem_id': parent.id
+            }
+        );
     }
 };
 
