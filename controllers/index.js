@@ -16,7 +16,7 @@ api.use(require('./problem/problemCrud.controller'));
 api.use(require('./problem/problemFile.controller'));
 api.use(require('./solution.controller'));
 // api.use(require('./checker.controller'));
-// api.use(require('./testCase/testCaseCrud.controller'));
+api.use(require('./testCase/testCaseCrud.controller'));
 // api.use(require('./testCase/testCaseFile.controller'));
 // api.use(require('./log.controller'));
 // api.use(require('./email.controller'));

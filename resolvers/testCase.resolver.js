@@ -1,10 +1,10 @@
 'use strict';
 
 var utilQuery     = require('../queries/util.query'),
-    solutionQuery = require('../queries/solution.query');
+    testCaseQuery = require('../queries/testCase.query');
 
 var query = (args, something, context) => {
-    return solutionQuery.getSolutions(context.conn, args, context.user);
+    return testCaseQuery.getTestCases(context.conn, args, context.user);
 };
 
 var fields = {

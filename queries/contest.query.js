@@ -44,12 +44,9 @@ function countProblems(conn, args, user) {
 		conn,
 		'count(*) as count',
 		'problem p',
-		[{
-			table:     'contest_problem cp',
-			condition: 'cp.problem_id = p.id'
-		}],
+		[],
 		{
-			'cp.contest_id': args.contest_id,
+			'p.contest_id': args.contest_id,
 			'p.deleted_at': {
 				$isNull: true
 			}

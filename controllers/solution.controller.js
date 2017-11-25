@@ -16,7 +16,6 @@ var express       = require('express'),
  * Create a solution.
  */
 async function createSolution(conn, req, res, next) {
-	await utilQuery.beginTransaction(conn);
 	try {
 		// get the contest.
 		var contest = await contestQuery.getOneContest(conn, {
@@ -42,24 +41,16 @@ async function createSolution(conn, req, res, next) {
 			expected_verdict: req.body.expected_verdict,
 			source_code:      req.body.source_code,
 			order:            currentSolutionsCount.count + 1,
-			author_id:        req.user._id
+			author_id:        req.user._id,
+			problem_id:       problem.id
 		};
 
 		// insert the problem.
 		var insertResult = await utilQuery.insert(conn, 'solution', newSolution);
 
-		// add the problem to the contest.
-		await utilQuery.insert(conn, 'problem_solution', {
-			problem_id: problem.id,
-			solution_id: insertResult.insertId
-		});
-
-		// commit changes.
-		await utilQuery.commit(conn);
-
 		// get the inserted solution.
 		newSolution = await solutionQuery.getOneSolution(conn, {
-			solution_nickname: newSolution.nickname
+			solution_id: insertResult.insertId
 		}, req.user);
 
 		// return it.
@@ -68,8 +59,6 @@ async function createSolution(conn, req, res, next) {
 			solution: newSolution
 		});
 	} catch(err) {
-		await utilQuery.rollback(conn);
-
 		return next({
 			error: err
 		});
@@ -96,6 +85,7 @@ async function editSolution(conn, req, res, next) {
 			}
 		}, req.user);
 
+		// get the solution.
 		var solution = await solutionQuery.getOneSolution(conn, {
 			solution_nickname: req.params.solution_nickname,
 			deleted_at: {
@@ -114,14 +104,14 @@ async function editSolution(conn, req, res, next) {
 			}
 		});
 
-		// edit the problem.
+		// edit the solution.
 		await utilQuery.edit(conn, 'solution', fieldsToEdit, {
 			id: solution.id
 		});
 
 		// get the solution updated.
 		solution = await solutionQuery.getOneSolution(conn, {
-			solution_nickname: req.params.solution_nickname,
+			solution_id: solution.id,
 			deleted_at: {
 				$isNull: true
 			}
@@ -197,7 +187,7 @@ async function removeSolution(conn, req, res, next) {
 
 		// get the solution updated.
 		solution = await solutionQuery.getOneSolution(conn, {
-			solution_nickname: req.params.solution_nickname,
+			solution_id: solution.id,
 			deleted_at: {
 				$isNull: true
 			}

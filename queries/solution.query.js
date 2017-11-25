@@ -9,20 +9,14 @@ function getSolutions(conn, args, user) {
 		's.*',
 		'solution s',
 		[{
-			table:     'problem_solution ps',
-			condition: 'ps.solution_id = s.id'
-		}, {
-			table:     'contest_problem cp',
-			condition: 'cp.problem_id = ps.problem_id'
-		}, {
-			table:     'contest_contributor cc',
-			condition: 'cc.contest_id = cp.contest_id'
+			table:     'problem p',
+			condition: 'p.id = s.problem_id'
 		}, {
 			table:     'contest c',
-			condition: 'cp.contest_id = c.id'
+			condition: 'c.id = p.contest_id'
 		}, {
-			table:     'problem p',
-			condition: 'p.id = ps.problem_id'
+			table:     'contest_contributor cc',
+			condition: 'cc.contest_id = c.id'
 		}],
 		{
 			'cc.user_id': user._id,
@@ -43,14 +37,11 @@ function getOneSolution(conn, args, user) {
 		's.*',
 		'solution s',
 		[{
-			table:     'problem_solution ps',
-			condition: 'ps.solution_id = s.id'
-		}, {
-			table:     'contest_problem cp',
-			condition: 'cp.problem_id = ps.problem_id'
+			table:     'problem p',
+			condition: 'p.id = s.problem_id'
 		}, {
 			table:     'contest_contributor cc',
-			condition: 'cc.contest_id = cp.contest_id'
+			condition: 'cc.contest_id = p.contest_id'
 		}],
 		{
 			'cc.user_id':   user._id,

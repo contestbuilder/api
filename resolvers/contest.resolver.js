@@ -19,6 +19,7 @@ var fields = {
             }
         );
     },
+
     contributors: (parent, args, context) => {
         return utilQuery.select(
             context.conn,
@@ -33,17 +34,15 @@ var fields = {
             }
         );
     },
+
     problems: (parent, args, context) => {
         return utilQuery.select(
             context.conn,
             'p.*',
             'problem p',
-            [{
-                table:     'contest_problem cp',
-                condition: 'cp.problem_id = p.id'
-            }],
+            [],
             {
-                'cp.contest_id': parent.id
+                'p.contest_id': parent.id
             }
         );
     }

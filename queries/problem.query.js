@@ -9,14 +9,11 @@ function getProblems(conn, args, user) {
 		'p.*',
 		'problem p',
 		[{
-			table:     'contest_problem cp',
-			condition: 'cp.problem_id = p.id'
-		}, {
 			table:     'contest_contributor cc',
-			condition: 'cc.contest_id = cp.contest_id'
+			condition: 'cc.contest_id = p.contest_id'
 		}, {
 			table:     'contest c',
-			condition: 'cp.contest_id = c.id'
+			condition: 'c.id = p.contest_id'
 		}],
 		{
 			'cc.user_id': user._id,
@@ -35,11 +32,8 @@ function getOneProblem(conn, args, user) {
 		'p.*',
 		'problem p',
 		[{
-			table:     'contest_problem cp',
-			condition: 'cp.problem_id = p.id'
-		}, {
 			table:     'contest_contributor cc',
-			condition: 'cc.contest_id = cp.contest_id'
+			condition: 'cc.contest_id = p.contest_id'
 		}],
 		{
 			'cc.user_id':   user._id,
@@ -50,23 +44,32 @@ function getOneProblem(conn, args, user) {
 	);
 }
 
-// count how many problems there are on this contest.
+// count how many solutions this problem has.
 function countSolutions(conn, args, user) {
 	return utilQuery.selectOne(
 		conn,
 		'count(*) as count',
 		'solution s',
-		[{
-			table:     'problem_solution ps',
-			condition: 'ps.solution_id = s.id'
-		}, {
-			table:     'contest_problem cp',
-			condition: 'cp.problem_id = ps.problem_id'
-		}],
+		[],
 		{
-			'cp.contest_id': args.contest_id,
-			'ps.problem_id': args.problem_id,
+			's.problem_id': args.problem_id,
 			's.deleted_at': {
+				$isNull: true
+			}
+		}
+	);
+}
+
+// count how many test cases this problem has.
+function countTestCases(conn, args, user) {
+	return utilQuery.selectOne(
+		conn,
+		'count(*) as count',
+		'test_case tc',
+		[],
+		{
+			'tc.problem_id': args.problem_id,
+			'tc.deleted_at': {
 				$isNull: true
 			}
 		}
@@ -76,5 +79,6 @@ function countSolutions(conn, args, user) {
 module.exports = {
 	getProblems:    getProblems,
 	getOneProblem:  getOneProblem,
-	countSolutions: countSolutions
+	countSolutions: countSolutions,
+	countTestCases: countTestCases
 };

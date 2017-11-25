@@ -12,6 +12,7 @@ module.exports = `
         order:        Int
         deleted_at:   Date
 
-        solutions: [Solution]
+        solutions:  [Solution]
+        test_cases: [TestCase]
     }
 `;

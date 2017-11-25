@@ -1,14 +1,17 @@
 'use strict';
 
-var mongoose          = require('mongoose'),
-	Schema            = mongoose.Schema,
-	testCaseLogSchema = require('./testCaseLog.schema');
+module.exports = `
+    type TestCase {
+        id:          Int
+        author:      User
+        problem:     Problem
+        input:       String
+        output:      String
+        input_file:  String
+        output_file: String
+        order:       Int
+        deleted_at:  Date
 
-var testCaseSchema = new Schema({
-    deleted_at: {
-        type: Date
-    },
-    v: [ testCaseLogSchema ]
-});
-
-module.exports = testCaseSchema;
+        problem: Problem
+    }
+`;

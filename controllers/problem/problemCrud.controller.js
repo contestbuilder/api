@@ -15,7 +15,6 @@ var express      = require('express'),
  * Create a problem.
  */
 async function createProblem(conn, req, res, next) {
-	await utilQuery.beginTransaction(conn);
 	try {
 		// get the contest in which the problem will be inserted.
 		var contest = await contestQuery.getOneContest(conn, {
@@ -32,26 +31,18 @@ async function createProblem(conn, req, res, next) {
 			name:        req.body.name,
 			nickname:    utilLib.getNickname(req.body.name),
 			description: req.body.description,
-			time_limit:  req.body.time_limit || 1,
+			time_limit:  req.body.time_limit,
 			order:       currentProblemsCount.count + 1,
-			author_id:   req.user._id
+			author_id:   req.user._id,
+			contest_id:  contest.id
 		};
 
 		// insert the problem.
 		var insertResult = await utilQuery.insert(conn, 'problem', newProblem);
 
-		// add the problem to the contest.
-		await utilQuery.insert(conn, 'contest_problem', {
-			contest_id: contest.id,
-			problem_id: insertResult.insertId
-		});
-
-		// commit changes.
-		await utilQuery.commit(conn);
-
 		// get the inserted problem.
 		newProblem = await problemQuery.getOneProblem(conn, {
-			problem_nickname: newProblem.nickname
+			problem_id: insertResult.insertId
 		}, req.user);
 
 		// return it.
@@ -60,8 +51,6 @@ async function createProblem(conn, req, res, next) {
 			problem: newProblem
 		});
 	} catch(err) {
-		await utilQuery.rollback(conn);
-
 		return next({
 			error: err
 		});
@@ -105,7 +94,7 @@ async function editProblem(conn, req, res, next) {
 
 		// get the problem updated.
 		problem = await problemQuery.getOneProblem(conn, {
-			problem_nickname: req.params.problem_nickname,
+			problem_id: problem.id,
 			deleted_at: {
 				$isNull: true
 			}
@@ -173,7 +162,7 @@ async function removeProblem(conn, req, res, next) {
 
 		// get the problem updated.
 		problem = await problemQuery.getOneProblem(conn, {
-			problem_nickname: req.params.problem_nickname,
+			problem_id: problem.id,
 			deleted_at: {
 				$isNull: true
 			}

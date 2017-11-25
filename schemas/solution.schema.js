@@ -11,5 +11,7 @@ module.exports = `
         source_code:      String
         order:            Int
         deleted_at:       Date
+
+        problem: Problem
     }
 `;

@@ -1,446 +1,225 @@
 'use strict';
 
-var status        = require('http-status'),
-    express       = require('express'),
-    handleLib     = require('../../libraries/handle.lib'),
-    utilLib       = require('../../libraries/util.lib'),
-    versionLib    = require('../../libraries/version.lib'),
-    fileLib       = require('../../libraries/file.lib'),
-    aws           = require('../../libraries/aws.lib'),
-    contestPolicy = require('../../policies/contest.policy'),
-    contestAgg    = require('../../aggregations/contest.aggregation'),
-    models        = require('mongoose').models,
-    Contest       = models.Contest,
-    Log           = models.Log,
-    ObjectId      = require('mongoose').Types.ObjectId;
+var express       = require('express'),
+	utilQuery     = require('../../queries/util.query'),
+	contestQuery  = require('../../queries/contest.query'),
+	problemQuery  = require('../../queries/problem.query'),
+	testCaseQuery = require('../../queries/testCase.query'),
+	utilLib       = require('../../libraries/util.lib');
 
 
-function getProblemTestCases(req, res) {
-    // check if the user has permission to see this contest info.
-    var contestMatch = contestPolicy.isContributor(null, req.user._id);
-    contestPolicy.hideDeletedContests(contestMatch, req.user.permissions);
-    contestPolicy.matchNickname(contestMatch, req.params.contest_nickname);
+/**
+ * Controllers
+ */
 
-    // filter the problem.
-    var problemMatch = {
-        'problems.nickname': req.params.problem_nickname
-    };
+/**
+ * Create a test case.
+ */
+async function createTestCase(conn, req, res, next) {
+	try {
+		// get the contest.
+		var contest = await contestQuery.getOneContest(conn, {
+			contest_nickname: req.params.nickname
+		}, req.user);
 
-    var aggregation = contestAgg.filterOnlyLastVersions(contestMatch, problemMatch);
-    utilLib.aggregate(Contest, aggregation)
-        .then(handleLib.handleAggregationFindOne)
-        .then(function(contestDoc) {
-            if(contestDoc.problems.length !== 1) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Problem not found.'
-                });
-            }
+		// get the problem.
+		var problem = await problemQuery.getOneProblem(conn, {
+			problem_nickname: req.params.problem_nickname
+		}, req.user);
 
-            return contestDoc.problems[0].test_cases;
-        })
-        .then(handleLib.handleReturn.bind(null, res, 'test_cases'))
-        .catch(handleLib.handleError.bind(null, res));
+		// count how many active test cases there are for this problem.
+		var currentTestCasesCount = await problemQuery.countTestCases(conn, {
+			contest_id: contest.id,
+			problem_id: problem.id
+		}, req.user);
+
+		// new test case object.
+		var newTestCase = {
+			input:       req.body.input,
+			output:      req.body.output,
+			input_file:  req.body.input_file,
+			output_file: req.body.output_file,
+			order:       currentTestCasesCount.count + 1,
+			author_id:   req.user._id,
+			problem_id:  problem.id
+		};
+
+		// insert the test case.
+		var insertResult = await utilQuery.insert(conn, 'test_case', newTestCase);
+
+		// get the inserted test case.
+		newTestCase = await testCaseQuery.getOneTestCase(conn, {
+			test_case_id: insertResult.insertId
+		}, req.user);
+
+		// return it.
+		return res.json({
+			success:   true,
+			test_case: newTestCase
+		});
+	} catch(err) {
+		return next({
+			error: err
+		});
+	} finally {
+		conn.release();
+	}
 }
 
-function createTestCase(req, res) {
-    var input, output;
+/**
+ * Edit a test case.
+ */
+async function editTestCase(conn, req, res, next) {
+	try {
+		// get the contest.
+		var contest = await contestQuery.getOneContest(conn, {
+			contest_nickname: req.params.nickname
+		}, req.user);
 
-    // check if the required fields were provided.
-    handleLib.handleRequired(req.body, [
-        [ 'input',  'input_file_name'  ],
-        [ 'output', 'output_file_name' ]
-    ])
-        .then(function() {
-            // check if the user has permission to see this contest info.
-            var contestMatch = contestPolicy.isContributor(null, req.user._id);
-            contestPolicy.hideDeletedContests(contestMatch, req.user.permissions);
-            contestPolicy.matchNickname(contestMatch, req.params.contest_nickname);
+		// get the problem.
+		var problem = await problemQuery.getOneProblem(conn, {
+			problem_nickname: req.params.problem_nickname,
+			deleted_at: {
+				$isNull: true
+			}
+		}, req.user);
 
-            return Contest.findOne(contestMatch);
-        })
-        .then(handleLib.handleFindOne)
-        .then(function(contestDoc) {
-            // handle the input.
-            if(req.body.input) {
-                input = req.body.input;
+		// get the test case.
+		var test_case = await testCaseQuery.getOneTestCase(conn, {
+			test_case_id: +req.params.test_case_id,
+			deleted_at: {
+				$isNull: true
+			}
+		}, req.user);
 
-                return contestDoc;
-            } else if(req.body.input_file_name) {
-                return new Promise(function(resolve, reject) {
-                    aws.s3downloadFile(
-                        fileLib.replacePathWithParams('testCaseTempFile', {
-                            contest_nickname: req.params.contest_nickname,
-                            problem_nickname: req.params.problem_nickname,
-                            file_name:        req.body.input_file_name
-                        })
-                    )
-                    .then(function(fileData) {
-                        input = fileData.Body;
+		// identify the fields that will be edited.
+		var fieldsToEdit = {};
+		[
+			'input', 'output', 
+			'input_file', 'output_file'
+		].forEach(paramName => {
+			if(req.body[paramName] !== undefined) {
+				fieldsToEdit[paramName] = req.body[paramName];
+			}
+		});
 
-                        return resolve(contestDoc);
-                    });
-                });
-            }
-        })
-        .then(function(contestDoc) {
-            // handle the output.
-            if(req.body.output) {
-                output = req.body.output;
+		// edit the test_case.
+		await utilQuery.edit(conn, 'test_case', fieldsToEdit, {
+			id: test_case.id
+		});
 
-                return contestDoc;
-            } else if(req.body.output_file_name) {
-                return new Promise(function(resolve, reject) {
-                    aws.s3downloadFile(
-                        fileLib.replacePathWithParams('testCaseTempFile', {
-                            contest_nickname: req.params.contest_nickname,
-                            problem_nickname: req.params.problem_nickname,
-                            file_name:        req.body.output_file_name
-                        })
-                    )
-                    .then(function(fileData) {
-                        output = fileData.Body;
+		// get the test_case updated.
+		test_case = await testCaseQuery.getOneTestCase(conn, {
+			test_case_id: test_case.id,
+			deleted_at: {
+				$isNull: true
+			}
+		}, req.user);
 
-                        return resolve(contestDoc);
-                    });
-                });
-            }
-        })
-        .then(function(contestDoc) {
-            // filter the problem.
-            var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
-            if(!problem) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Problem not found.'
-                });
-            }
-
-            var firstVersion = {
-                input:            input,
-                output:           output,
-                input_file_name:  req.body.input_file_name,
-                output_file_name: req.body.output_file_name,
-                order:            problem.test_cases.length + 1,
-                critical:         true
-            };
-
-            var test_case = {
-                v: [ firstVersion ]
-            };
-
-            problem.test_cases.push(test_case);
-            return contestDoc.save();
-        })
-        .then(function(contestDoc) {
-            var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
-            return problem.test_cases[ problem.test_cases.length-1 ];
-        })
-        .then(handleLib.handleReturn.bind(null, res, 'test_case'))
-        .catch(handleLib.handleError.bind(null, res));
+		// return it.
+		return res.json({
+			success:   true,
+			test_case: test_case
+		});
+	} catch(err) {
+		return next({
+			error: err
+		});
+	} finally {
+		conn.release();
+	}
 }
 
-function getTestCase(req, res) {
-    // check if the user has permission to see this contest info.
-    var contestMatch = contestPolicy.isContributor(null, req.user._id);
-    contestPolicy.hideDeletedContests(contestMatch, req.user.permissions);
-    contestPolicy.matchNickname(contestMatch, req.params.contest_nickname);
+/**
+ * Disable a test case.
+ */
+async function removeTestCase(conn, req, res, next) {
+	await utilQuery.beginTransaction(conn);
+	try {
+		// get the contest.
+		var contest = await contestQuery.getOneContest(conn, {
+			contest_nickname: req.params.nickname
+		}, req.user);
 
-    // filter the problem.
-    var problemMatch = {
-        'problems.nickname': req.params.problem_nickname
-    };
+		// get the problem.
+		var problem = await problemQuery.getOneProblem(conn, {
+			problem_nickname: req.params.problem_nickname,
+			deleted_at: {
+				$isNull: true
+			}
+		}, req.user);
 
-    // filter the test case.
-    var testCaseMatch = {
-        'problems.test_cases._id': ObjectId(req.params.test_case_id)
-    };
+		// get the test case.
+		var test_case = await testCaseQuery.getOneTestCase(conn, {
+			test_case_id: req.params.test_case_id,
+			deleted_at: {
+				$isNull: true
+			}
+		}, req.user);
 
-    var aggregation = contestAgg.filterOnlyLastVersions(contestMatch, problemMatch, null, testCaseMatch, null, {
-        show_test_case_input:  req.query.complete_input === 'true',
-        show_test_case_output: req.query.complete_output === 'true'
-    });
-    utilLib.aggregate(Contest, aggregation)
-        .then(handleLib.handleAggregationFindOne)
-        .then(function(contestDoc) {
-            if(contestDoc.problems.length !== 1) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Problem not found.'
-                });
-            }
-            if(contestDoc.problems[0].test_cases.length !== 1) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Test case not found.'
-                });
-            }
+		// remove the test case.
+		await utilQuery.edit(conn, 'test_case', {
+			deleted_at: new Date()
+		}, {
+			id: test_case.id
+		});
 
-            return contestDoc.problems[0].test_cases[0];
-        })
-        .then(handleLib.handleReturn.bind(null, res, 'test_case'))
-        .catch(handleLib.handleError.bind(null, res));
+		// reorder the test cases accordingly.
+		var remainingTestCases = await testCaseQuery.getTestCases(conn, {
+			problem_id: problem.id,
+			deleted_at: {
+				$isNull: true
+			}
+		}, req.user);
+		for(var index=0; index<remainingTestCases.length; index++) {
+			var remainingTestCase = remainingTestCases[index];
+
+			if(remainingTestCase.order > solution.order) {
+				await utilQuery.edit(conn, 'test_case', {
+					order: remainingTestCase.order - 1
+				}, {
+					id: remainingTestCase.id
+				});
+			}
+		}
+		await utilQuery.commit(conn);
+
+		// get the test case updated.
+		test_case = await testCaseQuery.getOneTestCase(conn, {
+			test_case_id: test_case.id,
+			deleted_at: {
+				$isNull: true
+			}
+		}, req.user);
+
+		// return it.
+		return res.json({
+			success:   true,
+			test_case: test_case
+		});
+	} catch(err) {
+		await utilQuery.rollback(conn);
+
+		return next({
+			error: err
+		});
+	} finally {
+		conn.release();
+	}
 }
 
-function removeTestCase(req, res) {
-    // check if the user has permission to see this contest info.
-    var contestMatch = contestPolicy.isContributor(null, req.user._id);
-    contestPolicy.hideDeletedContests(contestMatch, req.user.permissions);
-    contestPolicy.matchNickname(contestMatch, req.params.contest_nickname);
 
-    var testCaseFiles;
-    Contest.findOne(contestMatch)
-        .select('+problems.test_cases.v.input +problems.test_cases.v.output')
-        .then(handleLib.handleFindOne)
-        .then(function(contestDoc) {
-            var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
-            if(!problem) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Problem not found.'
-                });
-            }
-
-            var testCaseIndex = utilLib.getItemIndex(problem.test_cases, { _id: req.params.test_case_id });
-            if(testCaseIndex === null) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Test case not found.'
-                });
-            }
-
-            // in case the files are on s3, save the reference to delete it.
-            testCaseFiles = {
-                input_file_name:  problem.test_cases[testCaseIndex].input_file_name,
-                output_file_name: problem.test_cases[testCaseIndex].output_file_name
-            };
-
-            problem.test_cases.forEach(function(test_case) {
-                var t_lastVersion = versionLib.getLastVersion(test_case.v);
-                if(t_lastVersion.order > versionLib.getLastVersion(problem.test_cases[testCaseIndex].v).order) {
-                    test_case.v.push(versionLib.createNewVersion(test_case.v, {
-                        critical: false,
-                        order   : t_lastVersion.order - 1
-                    }));
-                }
-            });
-            problem.test_cases.splice(testCaseIndex, 1);
-
-            return contestDoc.save();
-        })
-        .then(function(contestDoc) {
-            // remove input file from s3.
-            if(testCaseFiles.input_file_name) {
-                return aws.s3removeFile(
-                    fileLib.replacePathWithParams('testCaseTempFile', {
-                        contest_nickname: contestDoc.nickname,
-                        problem_nickname: req.params.problem_nickname,
-                        file_name:        testCaseFiles.input_file_name
-                    })
-                ).then(function(data) {
-                    return contestDoc;
-                });
-            }
-
-            return contestDoc;
-        })
-        .then(function(contestDoc) {
-            // remove output file from s3.
-            if(testCaseFiles.output_file_name) {
-                return aws.s3removeFile(
-                    fileLib.replacePathWithParams('testCaseTempFile', {
-                        contest_nickname: contestDoc.nickname,
-                        problem_nickname: req.params.problem_nickname,
-                        file_name:        testCaseFiles.output_file_name
-                    })
-                ).then(function(data) {
-                    return contestDoc;
-                });
-            }
-
-            return contestDoc;
-        })
-        .then(function(contestDoc) {
-            return true;
-        })
-        .then(handleLib.handleReturn.bind(null, res, 'success'))
-        .catch(handleLib.handleError.bind(null, res));
-}
-
-function editTestCase(req, res) {
-    // check if the user has permission to see this contest info.
-    var contestMatch = contestPolicy.isContributor(null, req.user._id);
-    contestPolicy.hideDeletedContests(contestMatch, req.user.permissions);
-    contestPolicy.matchNickname(contestMatch, req.params.contest_nickname);
-
-    var testCase, testCaseNewVersion;
-    var input, output;
-    Contest.findOne(contestMatch)
-        .select('+problems.test_cases.v.input +problems.test_cases.v.output')
-        .then(handleLib.handleFindOne)
-        .then(function(contestDoc) {
-            var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
-            if(!problem) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Problem not found.'
-                });
-            }
-
-            var testCaseIndex = utilLib.getItemIndex(problem.test_cases, { _id: req.params.test_case_id });
-            if(testCaseIndex === null) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Test case not found.'
-                });
-            }
-
-            testCase = problem.test_cases[testCaseIndex];
-            testCaseNewVersion = versionLib.createNewVersion(testCase.v);
-
-            // order
-            if(req.body.order !== undefined && req.body.order != testCaseNewVersion.order) {
-                problem.test_cases.forEach(function(tc, index) {
-                    var tc_lastVersion = versionLib.getLastVersion(tc.v);
-
-                    if(index != testCaseIndex
-                    && versionLib.isBetween(tc_lastVersion.order, testCaseNewVersion.order, req.body.order)) {
-                        tc.v.push(versionLib.createNewVersion(tc.v, {
-                            critical: false,
-                            order:    tc_lastVersion.order + (testCaseNewVersion.order > req.body.order ? 1 : -1)
-                        }));
-                    }
-                });
-
-                testCaseNewVersion.order = req.body.order;
-            }
-
-            return contestDoc;
-        })
-        .then(function(contestDoc) {
-            // update input
-            if(req.body.input !== undefined && req.body.input !== testCaseNewVersion.input) {
-                testCaseNewVersion.input = req.body.input;
-            }
-
-            if(req.body.input_file_name !== testCaseNewVersion.input_file_name) {
-                return Promise.resolve(contestDoc)
-                .then(function(contestDoc) {
-                    // remove old file, if there was one.
-                    if(!!testCaseNewVersion.input_file_name) {
-                        return aws.s3removeFile(
-                            fileLib.replacePathWithParams('testCaseTempFile', {
-                                contest_nickname: contestDoc.nickname,
-                                problem_nickname: req.params.problem_nickname,
-                                file_name:        testCaseNewVersion.input_file_name
-                            })
-                        )
-                        .then(function(result) {
-                            testCaseNewVersion.input_file_name = undefined;
-
-                            return contestDoc;
-                        });
-                    }
-
-                    return contestDoc;
-                })
-                .then(function(contestDoc) {
-                    // load new file on the object.
-                    if(req.body.input_file_name) {
-                        return aws.s3downloadFile(
-                            fileLib.replacePathWithParams('testCaseTempFile', {
-                                contest_nickname: contestDoc.nickname,
-                                problem_nickname: req.params.problem_nickname,
-                                file_name:        req.body.input_file_name
-                            })
-                        )
-                        .then(function(fileData) {
-                            testCaseNewVersion.input = fileData.Body;
-                            testCaseNewVersion.input_file_name = req.body.input_file_name;
-
-                            return contestDoc;
-                        });
-                    }
-
-                    return contestDoc;
-                });
-            }
-
-            return contestDoc;
-        })
-        .then(function(contestDoc) {
-            // update output
-            if(req.body.output !== undefined && req.body.output !== testCaseNewVersion.output) {
-                testCaseNewVersion.output = req.body.output;
-            }
-
-            if(req.body.output_file_name !== testCaseNewVersion.output_file_name) {
-                return Promise.resolve(contestDoc)
-                .then(function(contestDoc) {
-                    // remove old file, if there was one.
-                    if(!!testCaseNewVersion.output_file_name) {
-                        return aws.s3removeFile(
-                            fileLib.replacePathWithParams('testCaseTempFile', {
-                                contest_nickname: contestDoc.nickname,
-                                problem_nickname: req.params.problem_nickname,
-                                file_name:        testCaseNewVersion.output_file_name
-                            })
-                        )
-                        .then(function(result) {
-                            testCaseNewVersion.output_file_name = undefined;
-
-                            return contestDoc;
-                        });
-                    }
-
-                    return contestDoc;
-                })
-                .then(function(contestDoc) {
-                    // load new file on the object.
-                    if(req.body.output_file_name) {
-                        return aws.s3downloadFile(
-                            fileLib.replacePathWithParams('testCaseTempFile', {
-                                contest_nickname: contestDoc.nickname,
-                                problem_nickname: req.params.problem_nickname,
-                                file_name:        req.body.output_file_name
-                            })
-                        )
-                        .then(function(fileData) {
-                            testCaseNewVersion.output = fileData.Body;
-                            testCaseNewVersion.output_file_name = req.body.output_file_name;
-
-                            return contestDoc;
-                        });
-                    }
-
-                    return contestDoc;
-                });
-            }
-
-            return contestDoc;
-        })
-        .then(function(contestDoc) {
-            testCase.v.push(testCaseNewVersion);
-
-            return contestDoc.save();
-        })
-        .then(function(contestDoc) {
-            var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
-            return utilLib.getItem(problem.test_cases, { _id: req.params.test_case_id });
-        })
-        .then(handleLib.handleReturn.bind(null, res, 'test_case'))
-        .catch(handleLib.handleError.bind(null, res));
-};
+/**
+ * Routes
+ */
 
 var router = express.Router();
 
-router.route('/contest/:contest_nickname/problem/:problem_nickname/test_case')
-    .get(getProblemTestCases)
-    .post(createTestCase);
+router.route('/contest/:nickname/problem/:problem_nickname/test_case')
+    .post(global.poolConnection.bind(null, createTestCase));
 
-router.route('/contest/:contest_nickname/problem/:problem_nickname/test_case/:test_case_id')
-    .get(getTestCase)
-    .delete(removeTestCase)
-    .put(editTestCase);
+router.route('/contest/:nickname/problem/:problem_nickname/test_case/:test_case_id')
+    .put(global.poolConnection.bind(null, editTestCase))
+    .delete(global.poolConnection.bind(null, removeTestCase));
 
 module.exports = router;

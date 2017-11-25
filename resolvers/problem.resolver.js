@@ -19,17 +19,27 @@ var fields = {
             }
         );
     },
+
     solutions: (parent, args, context) => {
         return utilQuery.select(
             context.conn,
             's.*',
             'solution s',
-            [{
-                table:     'problem_solution ps',
-                condition: 'ps.solution_id = s.id'
-            }],
+            [],
             {
-                'ps.problem_id': parent.id
+                's.problem_id': parent.id
+            }
+        );
+    },
+
+    test_cases: (parent, args, context) => {
+        return utilQuery.select(
+            context.conn,
+            'tc.*',
+            'test_case tc',
+            [],
+            {
+                'tc.problem_id': parent.id
             }
         );
     }

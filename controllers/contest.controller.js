@@ -38,7 +38,7 @@ async function createContest(conn, req, res, next) {
 
 		// get the inserted contest.
 		newContest = await contestQuery.getOneContest(conn, {
-			contest_nickname: newContest.nickname
+			contest_id: insertResult.insertId
 		}, req.user);
 
 		// return it.
@@ -84,7 +84,7 @@ async function editContest(conn, req, res, next) {
 
 		// get the contest updated.
 		contest = await contestQuery.getOneContest(conn, {
-			contest_nickname: req.params.nickname
+			contest_id: contest.id
 		}, req.user);
 
 		// return it.
@@ -120,7 +120,7 @@ async function editContest(conn, req, res, next) {
 
  		// get the contest updated.
 		contest = await contestQuery.getOneContest(conn, {
-			contest_nickname: req.params.nickname
+			contest_id: contest.id
 		}, req.user);
 
 		// return it.
