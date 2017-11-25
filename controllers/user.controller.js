@@ -1,121 +1,139 @@
 'use strict';
 
 var express   = require('express'),
-    handleLib = require('../libraries/handle.lib'),
-    emailLib  = require('../libraries/email.lib'),
-    mongoose  = require('mongoose'),
-    models    = mongoose.models,
-    ObjectId  = mongoose.Types.ObjectId,
-    User      = models.User;
+	utilQuery = require('../queries/util.query'),
+	userQuery = require('../queries/user.query'),
+	utilLib   = require('../libraries/util.lib'),
+	emailLib  = require('../libraries/email.lib');
+
 
 /**
  * Controllers
  */
 
-function getUsers(req, res) {
-    var query = {};
+/**
+ * Create a user.
+ */
+async function createUser(conn, req, res, next) {
+	try {
+		// new user object.
+		var newUser = {
+			name:     req.body.name || req.body.username,
+			username: req.body.username,
+			email:    req.body.email
+		};
 
-    if(req.query.deleted !== 'true') {
-        query.deleted_at = {
-            $exists: false
-        };
-    }
+		// insert the user.
+		var insertResult = await utilQuery.insert(conn, 'user', newUser);
 
-    User.find(query)
-        .then(handleLib.handleReturn.bind(null, res, 'users'))
-        .catch(handleLib.handleError.bind(null, res));
+		// get the inserted user.
+		newUser = await userQuery.getOneUser(conn, {
+			user_id: insertResult.insertId
+		}, req.user);
+
+		// send invitation e-mail.
+		if(req.body.sendEmailInvitation) {
+			await emailLib.regularInvitation(
+                newUser.email,
+                newUser.id,
+                newUser.name
+            );
+		}
+
+		// return it.
+		return res.json({
+			success: true,
+			user:    newUser
+		});
+	} catch(err) {
+		return next({
+			error: err
+		});
+	} finally {
+		conn.release();
+	}
 }
 
-function createUser(req, res) {
-    handleLib.handleRequired(req.body, [
-        'username', 'email'
-    ])
-        .then(function() {
-            var user = new User({
-                username: req.body.username,
-                email:    req.body.email
-            });
+/**
+ * Edit a contest.
+ */
+async function editContest(conn, req, res, next) {
+	try {
+		// get the contest.
+		var contest = await contestQuery.getOneContest(conn, {
+			contest_nickname: req.params.nickname
+		}, req.user);
 
-            return user.save();
-        })
-        .then(function(userDoc) {
-            if(req.body.sendEmailInvitation) {
-                return emailLib.regularInvitation(
-                    userDoc.email,
-                    userDoc._id,
-                    userDoc.name
-                )
-                .then(function(info) {
-                    return userDoc;
-                });
-            }
+		// identify the fields that will be edited.
+		var fieldsToEdit = {};
+		[
+			'name', 'scheduled_to'
+		].forEach(paramName => {
+			if(req.body[paramName] !== undefined) {
+				fieldsToEdit[paramName] = req.body[paramName];
+			}
+		});
 
-            return Promise.resolve(userDoc);
-        })
-        .then(handleLib.handleReturn.bind(null, res, 'user'))
-        .catch(handleLib.handleError.bind(null, res));
+		// edit the contest.
+		await utilQuery.edit(conn, 'contest', fieldsToEdit, {
+			id: contest.id
+		});
+
+		// get the contest updated.
+		contest = await contestQuery.getOneContest(conn, {
+			contest_nickname: req.params.nickname
+		}, req.user);
+
+		// return it.
+		return res.json({
+			success: true,
+			contest: contest
+		});
+	} catch(err) {
+		return next({
+			error: err
+		});
+	} finally {
+		conn.release();
+	}
 }
 
-function getUser(req, res) {
-    var query = {
-        $or: [{
-            username: req.params.username
-        }]
-    };
+/**
+ * Disable a contest.
+ */
+ async function removeContest(conn, req, res, next) {
+ 	try {
+ 		// get the contest to be removed.
+		var contest = await contestQuery.getOneContest(conn, {
+			contest_nickname: req.params.nickname
+		}, req.user);
 
-    if(ObjectId.isValid(req.params.username)) {
-        query.$or.push({
-            _id: ObjectId(req.params.username)
-        });
-    }
+		// remove it.
+		await utilQuery.edit(conn, 'contest', {
+			deleted_at: new Date()
+		}, {
+			id: contest.id
+		});
 
-    User.findOne(query)
-        .then(handleLib.handleFindOne)
-        .then(handleLib.handleReturn.bind(null, res, 'user'))
-        .catch(handleLib.handleError.bind(null, res));
-}
+ 		// get the contest updated.
+		contest = await contestQuery.getOneContest(conn, {
+			contest_nickname: req.params.nickname
+		}, req.user);
 
-function editUser(req, res) {
-    var query = {
-        $or: [{
-            username: req.params.username
-        }]
-    };
+		// return it.
+ 		return res.json({
+ 			success: true,
+ 			contest: contest
+ 		});
+ 	} catch(err) {
+ 		return next({
+ 			error: err
+ 		});
+ 	} finally {
+ 		conn.release();
+ 	}
+ }
 
-    if(ObjectId.isValid(req.params.username)) {
-        query.$or.push({
-            _id: ObjectId(req.params.username)
-        });
-    }
-
-    User.findOne(query)
-        .then(handleLib.handleFindOne)
-        .then(function(userDoc) {
-            ['name', 'username', 'password'].forEach(function(key) {
-                if(req.body[key] !== undefined) {
-                    userDoc[key] = req.body[key];
-                }
-            });
-
-            return userDoc.save();
-        })
-        .then(handleLib.handleReturn.bind(null, res, 'user'))
-        .catch(handleLib.handleError.bind(null, res));
-}
-
-function deleteUser(req, res) {
-    User.findOne({
-        username: req.params.username
-    })
-        .then(handleLib.handleFindOne)
-        .then(function(userDoc) {
-            userDoc.deleted_at = new Date();
-
-            return userDoc.save();
-        })
-        .then(handleLib.handleReturn.bind(null, res, 'user'))
-        .catch(handleLib.handleError.bind(null, res));
-}
 
 /**
  * Routes
@@ -124,12 +142,10 @@ function deleteUser(req, res) {
 var router = express.Router();
 
 router.route('/user/')
-    .get(getUsers)
-    .post(createUser);
+    .post(global.poolConnection.bind(null, createUser));
 
-router.route('/user/:username')
-    .get(getUser)
-    .put(editUser)
-    .delete(deleteUser);
+// router.route('/contest/:nickname')
+//     .put(global.poolConnection.bind(null, editContest))
+//     .delete(global.poolConnection.bind(null, removeContest));
 
 module.exports = router;

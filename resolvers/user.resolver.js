@@ -1,13 +1,10 @@
 'use strict';
 
-var utilQuery = require('../queries/util.query');
+var utilQuery = require('../queries/util.query'),
+    userQuery = require('../queries/user.query');
 
-var query = (root, args, context) => {
-    return utilQuery.select(
-        context.conn,
-        '*',
-        'user'
-    );
+var query = (args, something, context) => {
+    return userQuery.getUsers(context.conn, args, context.user);
 };
 
 var fields = {

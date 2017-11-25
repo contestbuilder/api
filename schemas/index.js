@@ -13,7 +13,7 @@ var typeDefs = [
     require('./solution.schema'),
     `
         type Query {
-            user: [User]
+            user(id: Int, username: String): [User]
 
             contest(id: Int, nickname: String): [Contest]
 

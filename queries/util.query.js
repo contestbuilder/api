@@ -156,7 +156,6 @@ function rollback(conn) {
 function getConditionStr(conn, conditions) {
 	var conditionStr = '';
 	if(conditions) {
-		conditionStr += ' WHERE \n';
 		var conditionsCount = 0;
 
 		if(Array.isArray(conditions)) {
@@ -199,6 +198,10 @@ function getConditionStr(conn, conditions) {
 					conditionStr += conditionKey + ' = ' + conn.escape(conditions[conditionKey]) + '\n';
 				}
 			});
+		}
+
+		if(conditionsCount) {
+			conditionStr = ' WHERE ' + conditionStr;
 		}
 	}
 	return conditionStr;

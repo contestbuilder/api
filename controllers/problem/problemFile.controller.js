@@ -1,147 +1,157 @@
 'use strict';
 
-var status    = require('http-status'),
-    express   = require('express'),
-    handleLib = require('../../libraries/handle.lib'),
-    utilLib   = require('../../libraries/util.lib'),
-    fileLib   = require('../../libraries/file.lib'),
-    models    = require('mongoose').models,
-    Contest   = models.Contest;
+var status       = require('http-status'),
+    express      = require('express'),
+    utilLib      = require('../../libraries/util.lib'),
+    fileLib      = require('../../libraries/file.lib'),
+    utilQuery    = require('../../queries/util.query'),
+    problemQuery = require('../../queries/problem.query');
 
 
-function getSignedDownloadUrl(req, res) {
-    Contest.findOne({
-        nickname: req.params.nickname
-    })
-        .then(handleLib.handleFindOne)
-        .then(function(contestDoc) {
-            var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
-            if(problem === null) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Problem not found.'
-                });
-            }
+async function getSignedDownloadUrl(conn, req, res, next) {
+    try {
+        // get the problem.
+        var problem = await problemQuery.getOneProblem(conn, {
+            problem_nickname: req.params.problem_nickname
+        }, req.user);
 
-            if(!problem.file) {
-                return Promise.reject({
-                    status_code: status.BAD_REQUEST,
-                    message:     'Problem doesn\'t have a file attached.'
-                });
-            }
+        // check if problem has a file attached.
+        if(!problem.file_url) {
+            throw 'Problem does\'t have a file attached.';
+        }
 
-            return fileLib.getSignedDownloadUrl('problemDescription', {
-                contest_nickname: contestDoc.nickname,
-                problem_nickname: problem.nickname,
-                file_name:        problem.file.name
-            });
-        })
-        .then(handleLib.handleReturn.bind(null, res, 'signedUrl'))
-        .catch(handleLib.handleError.bind(null, res));
+        // get the signed url.
+        var signedUrl = await fileLib.getSignedDownloadUrl('problemDescription', {
+            contest_nickname: req.params.nickname,
+            problem_nickname: req.params.problem_nickname,
+            file_name:        problem.file_url
+        });
+
+        // return it.
+        return res.json({
+            signedUrl: signedUrl
+        });
+    } catch(err) {
+        return next({
+            error: err
+        });
+    } finally {
+        conn.release();
+    }
 }
 
-function getSignedUploadUrl(req, res) {
-    Contest.findOne({
-        nickname: req.params.nickname
-    })
-        .then(handleLib.handleFindOne)
-        .then(function(contestDoc) {
-            var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
-            if(problem === null) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Problem not found.'
-                });
-            }
+async function getSignedUploadUrl(conn, req, res, next) {
+    try {
+        // get the problem.
+        var problem = await problemQuery.getOneProblem(conn, {
+            problem_nickname: req.params.problem_nickname
+        }, req.user);
 
-            return fileLib.getSignedUploadUrl('problemDescription', {
-                contest_nickname: contestDoc.nickname,
-                problem_nickname: problem.nickname,
-                file_name:        req.body.name
-            });
-        })
-        .then(handleLib.handleReturn.bind(null, res, 'signedUrl'))
-        .catch(handleLib.handleError.bind(null, res));
+        // get the signed upload url.
+        var signedUrl = await fileLib.getSignedUploadUrl('problemDescription', {
+            contest_nickname: req.params.nickname,
+            problem_nickname: req.params.problem_nickname,
+            file_name:        req.body.name
+        });
+
+        // return it.
+        return res.json({
+            signedUrl: signedUrl
+        });
+    } catch(err) {
+        return next({
+            error: err
+        });
+    } finally {
+        conn.release();
+    }
 }
 
-function uploadFile(req, res) {
-    Contest.findOne({
-        nickname: req.params.nickname
-    })
-        .then(handleLib.handleFindOne)
-        .then(function(contestDoc) {
-            var problemIndex = utilLib.getItemIndex(contestDoc.problems, { nickname: req.params.problem_nickname });
-            if(problemIndex === null) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Problem not found.'
-                });
-            }
+async function uploadFile(conn, req, res, next) {
+    try {
+        // get the problem.
+        var problem = await problemQuery.getOneProblem(conn, {
+            problem_nickname: req.params.problem_nickname
+        }, req.user);
 
-            contestDoc.problems[problemIndex].file = {
-                name: req.body.name
-            };
+        // set the file name on the problem.
+        await utilQuery.edit(conn, 'problem', {
+           file_url: req.body.name 
+        }, {
+            id: problem.id
+        });
 
-            return contestDoc.save();
-        })
-        .then(function(contestDoc) {
-            return utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
-        })
-        .then(handleLib.handleReturn.bind(null, res, 'problem'))
-        .catch(handleLib.handleError.bind(null, res));
+        // get the problem updated.
+        problem = await problemQuery.getOneProblem(conn, {
+            problem_nickname: req.params.problem_nickname
+        }, req.user);
+
+        // return it.
+        return res.json({
+            success: true,
+            problem: problem
+        });
+    } catch(err) {
+        return next({
+            error: err
+        });
+    } finally {
+        conn.release();
+    }
 }
 
-function removeFile(req, res) {
-    var localContestDoc, localProblem;
-    Contest.findOne({
-        nickname: req.params.nickname
-    })
-        .then(handleLib.handleFindOne)
-        .then(function(contestDoc) {
-            var problemIndex = utilLib.getItemIndex(contestDoc.problems, { nickname: req.params.problem_nickname });
-            if(problemIndex === null) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Problem not found.'
-                });
-            }
+async function removeFile(conn, req, res, next) {
+    try {
+        // get the problem.
+        var problem = await problemQuery.getOneProblem(conn, {
+            problem_nickname: req.params.problem_nickname
+        }, req.user);
 
-            var problem = contestDoc.problems[problemIndex];
-            if(!problem.file) {
-                return Promise.reject({
-                    status_code: status.BAD_REQUEST,
-                    message:     'There was no file to be deleted.'
-                });
-            }
+        // check if there's a file to remove.
+        if(!problem.file_url) {
+            throw 'Problem does\'t have a file attached.';
+        }
 
-            localContestDoc = contestDoc;
-            localProblem = problem;
+        // remove the problem from s3.
+        await fileLib.removeFile('problemDescription', {
+            contest_nickname: req.params.nickname,
+            problem_nickname: req.params.problem_nickname,
+            file_name:        problem.file_url
+        });
 
-            return fileLib.removeFile('problemDescription', {
-                contest_nickname: contestDoc.nickname,
-                problem_nickname: problem.nickname,
-                file_name:        problem.file.name
-            });
-        })
-        .then(function() {
-            localProblem.file = undefined;
+        // edit the problem.
+        utilQuery.edit(conn, 'problem', {
+            file_url: null
+        }, {
+            id: problem.id
+        });
 
-            return localContestDoc.save();
-        })
-        .then(function(contestDoc) {
-            return utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
-        })
-        .then(handleLib.handleReturn.bind(null, res, 'problem'))
-        .catch(handleLib.handleError.bind(null, res));
+        // get the problem updated.
+        problem = await problemQuery.getOneProblem(conn, {
+            problem_nickname: req.params.problem_nickname
+        }, req.user);
+
+        // return it.
+        return res.json({
+            success: true,
+            problem: problem
+        });
+    } catch(err) {
+        return next({
+            error: err
+        });
+    } finally {
+        conn.release();
+    }
 }
 
 
 var router = express.Router();
 
 router.route('/contest/:nickname/problem/:problem_nickname/file')
-    .get(getSignedDownloadUrl)
-    .post(getSignedUploadUrl)
-    .put(uploadFile)
-    .delete(removeFile);
+    .get(global.poolConnection.bind(null, getSignedDownloadUrl))
+    .post(global.poolConnection.bind(null, getSignedUploadUrl))
+    .put(global.poolConnection.bind(null, uploadFile))
+    .delete(global.poolConnection.bind(null, removeFile));
 
 module.exports = router;
