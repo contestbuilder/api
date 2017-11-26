@@ -30,6 +30,18 @@ var fields = {
                 'id': parent.problem_id
             }
         );
+    },
+
+    runs: (parent, args, context) => {
+        return utilQuery.select(
+            context.conn,
+            '*',
+            'solution_run',
+            null,
+            {
+                'solution_id': parent.id
+            }
+        );
     }
 };
 

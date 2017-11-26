@@ -41,6 +41,7 @@ async function createSolution(conn, req, res, next) {
 			expected_verdict: req.body.expected_verdict,
 			source_code:      req.body.source_code,
 			order:            currentSolutionsCount.count + 1,
+			last_edit:        new Date(),
 			author_id:        req.user._id,
 			problem_id:       problem.id
 		};
@@ -96,11 +97,17 @@ async function editSolution(conn, req, res, next) {
 		// identify the fields that will be edited.
 		var fieldsToEdit = {};
 		[
-			'name', 'language', 'expected_verdict',
-			'source_code'
-		].forEach(paramName => {
-			if(req.body[paramName] !== undefined) {
-				fieldsToEdit[paramName] = req.body[paramName];
+			{ key: 'name',             critical: false },
+			{ key: 'language',         critical: true  },
+			{ key: 'expected_verdict', critical: true  },
+			{ key: 'source_code',      critical: true  }
+		].forEach(param => {
+			if(req.body[param.key] !== undefined) {
+				fieldsToEdit[param.key] = req.body[param.key];
+
+				if(param.critical) {
+					fieldsToEdit['last_edit'] = new Date();
+				}
 			}
 		});
 

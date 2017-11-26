@@ -1,238 +1,113 @@
 'use strict';
 
-var express    = require('express'),
-    handleLib  = require('../libraries/handle.lib'),
-    versionLib = require('../libraries/version.lib'),
-    runLib     = require('../libraries/run.lib'),
-    utilLib    = require('../libraries/util.lib'),
-    problemLib = require('../libraries/problem.lib'),
-    mongoose   = require('mongoose'),
-    models     = mongoose.models,
-    Contest    = models.Contest,
-    Log        = models.Log;
+var express       = require('express'),
+	utilQuery     = require('../queries/util.query'),
+	contestQuery  = require('../queries/contest.query'),
+	problemQuery  = require('../queries/problem.query'),
+	solutionQuery = require('../queries/solution.query'),
+	testCaseQuery = require('../queries/testCase.query'),
+	utilLib       = require('../libraries/util.lib'),
+	runLib        = require('../libraries/run.lib');
+
 
 /**
  * Controllers
  */
-function runSolutions(req, res) {
-    var localContestDoc;
-    var localProblemDoc;
-    var localResults;
-    var lastRunNumber;
-    handleLib.handleRequired(req.body, [
-        'solutions', 'test_cases'
-    ])
-        .then(function() {
-            return Contest.findOne({
-                nickname: req.params.contest_nickname
-            })
-            .select('+problems.test_cases.v.input +problems.test_cases.v.output');
-        })
-        .then(handleLib.handleFindOne)
-        .then(function(contestDoc) {
-            localContestDoc = contestDoc;
-            var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
-            if(!problem) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Problem not found.'
-                });
-            }
-            var p_lastVersion = versionLib.getLastVersion(problem.v);
-            lastRunNumber = problemLib.getLastRunNumber(problem.solutions);
 
-            var solutions = problem.solutions.filter(function(solution) {
-                return req.body.solutions.some(function(solution_param) {
-                    return !solution.deleted_at && solution_param == solution.nickname;
-                });
-            });
-            if(!solutions || !solutions.length) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Solutions not found.'
-                });
-            }
+/**
+ * Create a solution.
+ */
+async function runSolutions(conn, req, res, next) {
+	try {
+		// get the contest.
+		var contest = await contestQuery.getOneContest(conn, {
+			contest_nickname: req.params.nickname
+		}, req.user);
 
-            var test_cases = problem.test_cases.filter(function(test_case) {
-                return req.body.test_cases.some(function(test_case_param) {
-                    return !test_case.deleted_at && test_case_param == test_case._id;
-                });
-            });
-            if(!test_cases || !test_cases.length) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Test cases not found.'
-                });
-            }
+		// get the problem.
+		var problem = await problemQuery.getOneProblem(conn, {
+			problem_nickname: req.params.problem_nickname
+		}, req.user);
 
-            var promises = [];
-            solutions.forEach(function(solution) {
-                var s_lastVersion = versionLib.getLastVersion(solution.v);
+		// count how many runs were made for this solution.
+		var highestRunNumber = await problemQuery.getHighestSolutionRunNumber(conn, {
+			problem_id: problem.id
+		}, req.user);
 
-                test_cases.forEach(function(test_case) {
-                    var t_lastVersion = versionLib.getLastVersion(test_case.v);
+		// get the solutions to be run.
+		var solutions = [];
+		for(var solutionIndex=0; solutionIndex<req.body.solutions.length; solutionIndex++) {
+			var solution = await solutionQuery.getOneSolution(conn, {
+				solution_nickname: req.body.solutions[solutionIndex]
+			}, req.user);
 
-                    promises.push(runLib.run(
-                        s_lastVersion.source_code,
-                        s_lastVersion.language,
-                        p_lastVersion.time_limit,
-                        t_lastVersion.input,
-                        t_lastVersion.output,
-                        {
-                            solution:  solution,
-                            test_case: test_case
-                        }
-                    ));
-                });
-            });
+			solutions.push(solution);
+		}
 
-            return Promise.all(promises);
-        })
-        .then(function(results) {
-            var run_id = new mongoose.mongo.ObjectId();
+		// get the test cases to be run.
+		var testCases = [];
+		for(var testCaseIndex=0; testCaseIndex<req.body.test_cases.length; testCaseIndex++) {
+			var testCase = await testCaseQuery.getOneTestCase(conn, {
+				test_case_id: req.body.test_cases[testCaseIndex]
+			}, req.user);
 
-            localResults = {
-                results:    results,
-                run_id:     run_id,
-                run_number: lastRunNumber + 1
-            };
-            results.forEach(function(result) {
-                var problem   = utilLib.getItem(localContestDoc.problems, { nickname: req.params.problem_nickname });
-                var solution  = utilLib.getItem(problem.solutions, { _id: result.context.solution._id });
-                var test_case = utilLib.getItem(problem.test_cases, { _id: result.context.test_case._id });
+			testCases.push(testCase);
+		}
 
-                solution.run.push({
-                    _id:          result._id,
-                    run_id:       run_id,
-                    run_number:   lastRunNumber + 1,
-                    test_case_id: test_case._id,
-                    success:      result.success,
-                    output:       result.success ? result.output : result.err,
-                    duration:     result.duration || 0,
-                    verdict:      result.verdict
-                });
+		// run it all.
+		var results = [];
+		for(var solutionIndex=0; solutionIndex<solutions.length; solutionIndex++) {
+			var solution = solutions[solutionIndex];
 
-                delete result.context;
-            });
+			for(var testCaseIndex=0; testCaseIndex<testCases.length; testCaseIndex++) {
+				var testCase = testCases[testCaseIndex];
 
-            return localContestDoc.save();
-        })
-        .then(function(contestDoc) {
-            return Promise.resolve(localResults);
-        })
-        .then(handleLib.handleReturn.bind(null, res, 'results'))
-        .catch(handleLib.handleError.bind(null, res));
-};
+				results.push(await runLib.run(
+                    solution.source_code,
+                    solution.language,
+                    problem.time_limit,
+                    testCase.input,
+                    testCase.output,
+                    {
+                        solution: solution,
+                        testCase: testCase
+                    }
+                ));
+			}
+		}
 
-function runCheckers(req, res) {
-    var localContestDoc;
-    var localProblemDoc;
-    var localResults;
-    var lastRunNumber;
-    handleLib.handleRequired(req.body, [
-        'checkers', 'test_cases'
-    ])
-        .then(function() {
-            return Contest.findOne({
-                nickname: req.params.contest_nickname
-            })
-            .select('+problems.test_cases.v.input +problems.test_cases.v.output');
-        })
-        .then(handleLib.handleFindOne)
-        .then(function(contestDoc) {
-            localContestDoc = contestDoc;
-            var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
-            if(!problem) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Problem not found.'
-                });
-            }
-            var p_lastVersion = versionLib.getLastVersion(problem.v);
-            lastRunNumber = problemLib.getLastRunNumber(problem.checkers);
+		// save runs.
+		for(var resultIndex=0; resultIndex<results.length; resultIndex++) {
+			var result = results[resultIndex];
 
-            var checkers = problem.checkers.filter(function(checker) {
-                return req.body.checkers.some(function(checker_param) {
-                    return !checker.deleted_at && checker_param == checker.nickname;
-                });
-            });
-            if(!checkers || !checkers.length) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Checker not found.'
-                });
-            }
+			await utilQuery.insert(conn, 'solution_run', {
+				number:       (highestRunNumber.highest_run_number || 0) + 1,
+				solution_id:  result.context.solution.id,
+				test_case_id: result.context.testCase.id,
+				output:       result.success ? (result.output || '').substr(0, 1024) : result.err,
+				duration:     result.duration || 0,
+				success:      result.success,
+				verdict:      result.verdict,
+				timestamp:    new Date()
+			});
 
-            var test_cases = problem.test_cases.filter(function(test_case) {
-                return req.body.test_cases.some(function(test_case_param) {
-                    return !test_case.deleted_at && test_case_param == test_case._id;
-                });
-            });
-            if(!test_cases || !test_cases.length) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Test cases not found.'
-                });
-            }
+			delete result.context;
+		}
 
-            var promises = [];
-            checkers.forEach(function(checker) {
-                var c_lastVersion = versionLib.getLastVersion(checker.v);
+		// return it.
+		return res.json({
+			success: true,
+			results: results
+		});
+	} catch(err) {
+		return next({
+			error: err
+		});
+	} finally {
+		conn.release();
+	}
+}
 
-                test_cases.forEach(function(test_case) {
-                    var t_lastVersion = versionLib.getLastVersion(test_case.v);
-
-                    promises.push(runLib.run(
-                        c_lastVersion.source_code,
-                        c_lastVersion.language,
-                        5,
-                        t_lastVersion.input,
-                        'ok\n',
-                        {
-                            checker:   checker,
-                            test_case: test_case
-                        }
-                    ));
-                });
-            });
-
-            return Promise.all(promises);
-        })
-        .then(function(results) {
-            var run_id = new mongoose.mongo.ObjectId();
-
-            localResults = {
-                results:    results,
-                run_id:     run_id,
-                run_number: lastRunNumber + 1
-            };
-            results.forEach(function(result) {
-                var problem   = utilLib.getItem(localContestDoc.problems, { nickname: req.params.problem_nickname });
-                var checker   = utilLib.getItem(problem.checkers, { _id: result.context.checker._id });
-                var test_case = utilLib.getItem(problem.test_cases, { _id: result.context.test_case._id });
-
-                checker.run.push({
-                    _id:          result._id,
-                    run_id:       run_id,
-                    run_number:   lastRunNumber + 1,
-                    test_case_id: test_case._id,
-                    success:      result.success,
-                    output:       result.success ? result.output : result.err,
-                    duration:     result.duration || 0,
-                    verdict:      result.verdict
-                });
-
-                delete result.context;
-            });
-
-            return localContestDoc.save();
-        })
-        .then(function(contestDoc) {
-            return Promise.resolve(localResults);
-        })
-        .then(handleLib.handleReturn.bind(null, res, 'results'))
-        .catch(handleLib.handleError.bind(null, res));
-};
 
 /**
  * Routes
@@ -241,9 +116,9 @@ function runCheckers(req, res) {
 var router = express.Router();
 
 router.route('/contest/:contest_nickname/problem/:problem_nickname/run/solutions')
-    .post(runSolutions);
+    .post(global.poolConnection.bind(null, runSolutions));
 
-router.route('/contest/:contest_nickname/problem/:problem_nickname/run/checkers')
-    .post(runCheckers);
+// router.route('/contest/:contest_nickname/problem/:problem_nickname/run/checkers')
+//     .post(runCheckers);
 
 module.exports = router;

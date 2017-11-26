@@ -23,7 +23,7 @@ api.use(require('./testCase/testCaseCrud.controller'));
 // api.use(require('./boca.controller'));
 
 // run
-// api.use(require('./run.controller'));
+api.use(require('./run.controller'));
 
 // graphql
 api.use(require('./graphql.controller'));

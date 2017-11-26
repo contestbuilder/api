@@ -40,6 +40,7 @@ async function createTestCase(conn, req, res, next) {
 			input_file:  req.body.input_file,
 			output_file: req.body.output_file,
 			order:       currentTestCasesCount.count + 1,
+			last_edit:   new Date(),
 			author_id:   req.user._id,
 			problem_id:  problem.id
 		};
@@ -95,11 +96,17 @@ async function editTestCase(conn, req, res, next) {
 		// identify the fields that will be edited.
 		var fieldsToEdit = {};
 		[
-			'input', 'output', 
-			'input_file', 'output_file'
-		].forEach(paramName => {
-			if(req.body[paramName] !== undefined) {
-				fieldsToEdit[paramName] = req.body[paramName];
+			{ key: 'input',       critical: true },
+			{ key: 'output',      critical: true },
+			{ key: 'input_file',  critical: true },
+			{ key: 'output_file', critical: true }
+		].forEach(param => {
+			if(req.body[param.key] !== undefined) {
+				fieldsToEdit[param.key] = req.body[param.key];
+
+				if(param.critical) {
+					fieldsToEdit['last_edit'] = new Date();
+				}
 			}
 		});
 

@@ -5,7 +5,7 @@ var dateResolver = {
         return new Date(value); // value from the client
     },
     __serialize(value) {
-        return value; // value sent to the client
+        return new Date(value); // value sent to the client
     },
     __parseLiteral(ast) {
         if (ast.kind === Kind.INT) {

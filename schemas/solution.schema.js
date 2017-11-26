@@ -10,8 +10,10 @@ module.exports = `
         expected_verdict: String
         source_code:      String
         order:            Int
+        last_edit:        Date
         deleted_at:       Date
 
         problem: Problem
+        runs:    [SolutionRun]
     }
 `;

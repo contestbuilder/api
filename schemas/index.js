@@ -12,6 +12,7 @@ var typeDefs = [
     require('./problem.schema'),
     require('./solution.schema'),
     require('./testCase.schema'),
+    require('./solutionRun.schema'),
     `
         type Query {
             user(id: Int, username: String): [User]
@@ -23,6 +24,8 @@ var typeDefs = [
             solution(id: Int, nickname: String): [Solution]
 
             test_case(id: Int): [TestCase]
+
+            solution_run(id: Int, number: Int): [SolutionRun]
         }
     `
 ].join('\n');

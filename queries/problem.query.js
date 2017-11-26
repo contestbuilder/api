@@ -76,9 +76,28 @@ function countTestCases(conn, args, user) {
 	);
 }
 
+// count how many runs were made for any solution on this problem.
+function getHighestSolutionRunNumber(conn, args, user) {
+	return utilQuery.selectOne(
+		conn,
+		'max(sr.number) as highest_run_number',
+		'solution_run sr',
+		[{
+			table:     'solution s',
+			condition: 's.id = sr.solution_id'
+		}],
+		{
+			's.problem_id': args.problem_id
+		}
+	);
+}
+
 module.exports = {
-	getProblems:    getProblems,
-	getOneProblem:  getOneProblem,
+	getProblems:   getProblems,
+	getOneProblem: getOneProblem,
+
 	countSolutions: countSolutions,
-	countTestCases: countTestCases
+	countTestCases: countTestCases,
+
+	getHighestSolutionRunNumber: getHighestSolutionRunNumber
 };

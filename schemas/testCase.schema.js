@@ -10,6 +10,7 @@ module.exports = `
         input_file:  String
         output_file: String
         order:       Int
+        last_edit:   Date
         deleted_at:  Date
 
         problem: Problem
