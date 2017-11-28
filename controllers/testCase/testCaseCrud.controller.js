@@ -5,6 +5,8 @@ var express       = require('express'),
 	contestQuery  = require('../../queries/contest.query'),
 	problemQuery  = require('../../queries/problem.query'),
 	testCaseQuery = require('../../queries/testCase.query'),
+    aws           = require('../../libraries/aws.lib'),
+    fileLib       = require('../../libraries/file.lib'),
 	utilLib       = require('../../libraries/util.lib');
 
 
@@ -16,6 +18,7 @@ var express       = require('express'),
  * Create a test case.
  */
 async function createTestCase(conn, req, res, next) {
+	await utilQuery.beginTransaction(conn);
 	try {
 		// get the contest.
 		var contest = await contestQuery.getOneContest(conn, {
@@ -35,18 +38,67 @@ async function createTestCase(conn, req, res, next) {
 
 		// new test case object.
 		var newTestCase = {
-			input:       req.body.input,
-			output:      req.body.output,
-			input_file:  req.body.input_file,
-			output_file: req.body.output_file,
-			order:       currentTestCasesCount.count + 1,
-			last_edit:   new Date(),
-			author_id:   req.user._id,
-			problem_id:  problem.id
+			input:          req.body.input,
+			output:         req.body.output,
+			input_file_id:  req.body.input_file_id,
+			output_file_id: req.body.output_file_id,
+			input_text_id:  null,
+			output_text_id: null,
+			order:          currentTestCasesCount.count + 1,
+			last_edit:      new Date(),
+			author_id:      req.user._id,
+			problem_id:     problem.id
 		};
+
+		// large input.
+		if(req.body.input_file_id && req.body.input_large) {
+			var file = await utilQuery.selectOne(conn, '*', 'file', [], {
+				id: req.body.input_file_id
+			});
+
+			var inputFile = await aws.s3downloadFile(
+                fileLib.replacePathWithParams('testCaseTempFile', {
+                    contest_nickname: contest.nickname,
+                    problem_nickname: problem.nickname,
+                    file_name:        file.name
+                }),
+                file.version_id
+            );
+
+            var textInsertResult = await utilQuery.insert(conn, 'text', {
+            	text: inputFile.Body
+            });
+
+            newTestCase.input_text_id = textInsertResult.insertId;
+		}
+
+		// large output.
+		if(req.body.output_file_id && req.body.output_large) {
+			var file = await utilQuery.selectOne(conn, '*', 'file', [], {
+				id: req.body.output_file_id
+			});
+
+			var outputFile = await aws.s3downloadFile(
+                fileLib.replacePathWithParams('testCaseTempFile', {
+                    contest_nickname: contest.nickname,
+                    problem_nickname: problem.nickname,
+                    file_name:        newTestCase.output_file_id
+                }),
+                file.version_id
+            );
+
+            var textInsertResult = await utilQuery.insert(conn, 'text', {
+            	text: outputFile.Body
+            });
+
+            newTestCase.output_text_id = textInsertResult.insertId;
+		}
 
 		// insert the test case.
 		var insertResult = await utilQuery.insert(conn, 'test_case', newTestCase);
+
+		// commit it all.
+		await utilQuery.commit(conn);
 
 		// get the inserted test case.
 		newTestCase = await testCaseQuery.getOneTestCase(conn, {
@@ -59,6 +111,8 @@ async function createTestCase(conn, req, res, next) {
 			test_case: newTestCase
 		});
 	} catch(err) {
+		await utilQuery.rollback(conn);
+
 		return next({
 			error: err
 		});

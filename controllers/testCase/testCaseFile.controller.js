@@ -1,131 +1,152 @@
 'use strict';
 
-var express       = require('express'),
-    status        = require('http-status'),
-    handleLib     = require('../../libraries/handle.lib'),
-    utilLib       = require('../../libraries/util.lib'),
-    fileLib       = require('../../libraries/file.lib'),
-    contestPolicy = require('../../policies/contest.policy'),
-    contestAgg    = require('../../aggregations/contest.aggregation'),
-    mongoose      = require('mongoose'),
-    ObjectId      = mongoose.Types.ObjectId,
-    models        = mongoose.models,
-    Contest       = models.Contest;
+var status       = require('http-status'),
+    express      = require('express'),
+    utilLib      = require('../../libraries/util.lib'),
+    fileLib      = require('../../libraries/file.lib'),
+    utilQuery    = require('../../queries/util.query'),
+    problemQuery = require('../../queries/problem.query');
 
+async function getSignedUploadUrl(conn, req, res, next) {
+    try {
+        // get the problem.
+        var problem = await problemQuery.getOneProblem(conn, {
+            problem_nickname: req.params.problem_nickname
+        }, req.user);
 
-function getSignedUploadUrl(req, res) {
-    // check if the user has permission to see this contest info.
-    var contestMatch = contestPolicy.isContributor(null, req.user._id);
-    contestPolicy.hideDeletedContests(contestMatch, req.user.permissions);
-    contestPolicy.matchNickname(contestMatch, req.params.contest_nickname);
+        // get the signed upload url.
+        var signedUrl = await fileLib.getSignedUploadUrl('testCaseTempFile', {
+            contest_nickname: req.params.contest_nickname,
+            problem_nickname: req.params.problem_nickname,
+            file_name:        req.body.name
+        });
 
-    // filter the problem.
-    var problemMatch = {
-        'problems.nickname': req.params.problem_nickname
-    };
-
-    var aggregation = contestAgg.filterOnlyLastVersions(contestMatch, problemMatch);
-    utilLib.aggregate(Contest, aggregation)
-        .then(handleLib.handleAggregationFindOne)
-        .then(function(contestDoc) {
-            if(contestDoc.problems.length !== 1) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Problem not found.'
-                });
-            }
-
-            // generate a random file name.
-        	var fileName = (new ObjectId()).toString() + '.txt';
-
-            var signedUrl = fileLib.getSignedUploadUrl('testCaseTempFile', {
-                contest_nickname: contestDoc.nickname,
-                problem_nickname: contestDoc.problems[0].nickname,
-                file_name:        fileName
-            });
-            signedUrl.file_name = fileName;
-
-            return signedUrl;
-        })
-        .then(handleLib.handleReturn.bind(null, res, 'signedUrl'))
-        .catch(handleLib.handleError.bind(null, res));
+        // return it.
+        return res.json({
+            signedUrl: signedUrl
+        });
+    } catch(err) {
+        return next({
+            error: err
+        });
+    } finally {
+        conn.release();
+    }
 }
 
-function getSignedDownloadUrl(req, res) {
-    // check if the user has permission to see this contest info.
-    var contestMatch = contestPolicy.isContributor(null, req.user._id);
-    contestPolicy.hideDeletedContests(contestMatch, req.user.permissions);
-    contestPolicy.matchNickname(contestMatch, req.params.contest_nickname);
+async function registerFile(conn, req, res, next) {
+    try {
+        // get the problem.
+        var problem = await problemQuery.getOneProblem(conn, {
+            problem_nickname: req.params.problem_nickname
+        }, req.user);
 
-    // filter the problem.
-    var problemMatch = {
-        'problems.nickname': req.params.problem_nickname
-    };
+        // get the file VersionId.
+        var VersionId = await fileLib.getFileVersionId('testCaseTempFile', {
+            contest_nickname: req.params.contest_nickname,
+            problem_nickname: req.params.problem_nickname,
+            file_name:        req.params.file_name
+        });
 
-    var aggregation = contestAgg.filterOnlyLastVersions(contestMatch, problemMatch);
-    utilLib.aggregate(Contest, aggregation)
-        .then(handleLib.handleAggregationFindOne)
-        .then(function(contestDoc) {
-            if(contestDoc.problems.length !== 1) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Problem not found.'
-                });
-            }
+        // insert file.
+        var insertResult = await utilQuery.insert(conn, 'file', {
+            name:       req.params.file_name,
+            version_id: VersionId
+        });
 
-            return fileLib.getSignedDownloadUrl('testCaseTempFile', {
-                contest_nickname: contestDoc.nickname,
-                problem_nickname: contestDoc.problems[0].nickname,
-                file_name:        req.params.file_name
-            });
-        })
-        .then(handleLib.handleReturn.bind(null, res, 'signedUrl'))
-        .catch(handleLib.handleError.bind(null, res));
+        // return it.
+        return res.json({
+            success: true,
+            file_id: insertResult.insertId
+        });
+    } catch(err) {
+        return next({
+            error: err
+        });
+    } finally {
+        conn.release();
+    }
 }
 
-function removeFile(req, res) {
-    // check if the user has permission to see this contest info.
-    var contestMatch = contestPolicy.isContributor(null, req.user._id);
-    contestPolicy.hideDeletedContests(contestMatch, req.user.permissions);
-    contestPolicy.matchNickname(contestMatch, req.params.contest_nickname);
+async function getSignedDownloadUrl(conn, req, res, next) {
+    try {
+        // get the problem.
+        var problem = await problemQuery.getOneProblem(conn, {
+            problem_nickname: req.params.problem_nickname
+        }, req.user);
 
-    // filter the problem.
-    var problemMatch = {
-        'problems.nickname': req.params.problem_nickname
-    };
+        // get the file.
+        var file = await utilQuery.selectOne(conn, '*', 'file', [], {
+            id: +req.params.file_id
+        });
 
-    var aggregation = contestAgg.filterOnlyLastVersions(contestMatch, problemMatch);
-    utilLib.aggregate(Contest, aggregation)
-        .then(handleLib.handleAggregationFindOne)
-        .then(function(contestDoc) {
-            if(contestDoc.problems.length !== 1) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Problem not found.'
-                });
-            }
+        // get the signed upload url.
+        var signedUrl = await fileLib.getSignedDownloadUrl('testCaseTempFile', {
+            contest_nickname: req.params.contest_nickname,
+            problem_nickname: req.params.problem_nickname,
+            file_name:        file.name
+        }, file.version_id);
 
-            return fileLib.removeFile('testCaseTempFile', {
-                contest_nickname: contestDoc.nickname,
-                problem_nickname: req.params.problem_nickname,
-                file_name:        req.params.file_name
-            });
-        })
-        .then(function(result) {
-            return true;
-        })
-        .then(handleLib.handleReturn.bind(null, res, 'success'))
-        .catch(handleLib.handleError.bind(null, res));
+        // return it.
+        return res.json({
+            signedUrl: signedUrl
+        });
+    } catch(err) {
+        return next({
+            error: err
+        });
+    } finally {
+        conn.release();
+    }
+}
+
+async function removeFile(conn, req, res, next) {
+    try {
+        // get the problem.
+        var problem = await problemQuery.getOneProblem(conn, {
+            problem_nickname: req.params.problem_nickname
+        }, req.user);
+
+        // get the file.
+        var file = await utilQuery.selectOne(conn, '*', 'file', [], {
+            id: +req.params.file_id
+        });
+
+        // remove the file.
+        await fileLib.removeFile('testCaseTempFile', {
+            contest_nickname: req.params.contest_nickname,
+            problem_nickname: req.params.problem_nickname,
+            file_name:        file.name
+        }, file.version_id);
+
+        // remove the file on database.
+        await utilQuery.hardDelete(conn, 'file', {
+            id: +req.params.file_id
+        });
+
+        return res.json({
+            success: true
+        });
+    } catch(err) {
+        return next({
+            error: err
+        });
+    } finally {
+        conn.release();
+    }
 }
 
 
 var router = express.Router();
 
 router.route('/contest/:contest_nickname/problem/:problem_nickname/test_case/file')
-    .post(getSignedUploadUrl);
+    .post(global.poolConnection.bind(null, getSignedUploadUrl));
 
 router.route('/contest/:contest_nickname/problem/:problem_nickname/test_case/file/:file_name')
-    .get(getSignedDownloadUrl)
-    .delete(removeFile);
+    .post(global.poolConnection.bind(null, registerFile));
+
+router.route('/contest/:contest_nickname/problem/:problem_nickname/test_case/file/:file_id')
+    .get(global.poolConnection.bind(null, getSignedDownloadUrl))
+    .delete(global.poolConnection.bind(null, removeFile));
 
 module.exports = router;

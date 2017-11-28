@@ -28,10 +28,11 @@ var s3 = new AWS.S3({
 
 
 // useful functions
-function s3downloadFile(s3Path) {
+function s3downloadFile(s3Path, VersionId) {
 	return new Promise(function(resolve, reject) {
 		s3.getObject({
-			Key: s3Path
+			Key:       s3Path,
+			VersionId: VersionId
 		}, function(err, data) {
 			if(err) {
 				return reject(err);
@@ -57,9 +58,24 @@ function s3uploadFile(s3Path, filePath) {
 	});
 }
 
-function s3removeFile(s3Path) {
+function s3removeFile(s3Path, VersionId) {
 	return new Promise(function(resolve, reject) {
 		s3.deleteObject({
+			Key:       s3Path,
+			VersionId: VersionId
+		}, function(err, data) {
+			if(err) {
+				return reject(err);
+			}
+
+			return resolve(data);
+		});
+	});
+}
+
+function s3headObject(s3Path) {
+	return new Promise(function(resolve, reject) {
+		s3.headObject({
 			Key: s3Path
 		}, function(err, data) {
 			if(err) {
@@ -78,5 +94,6 @@ module.exports = {
 	s3:             s3,
 	s3downloadFile: s3downloadFile,
 	s3uploadFile:   s3uploadFile,
-	s3removeFile:   s3removeFile
+	s3removeFile:   s3removeFile,
+	s3headObject:   s3headObject
 };

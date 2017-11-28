@@ -121,6 +121,23 @@ function softDelete(conn, table, conditions, deletedAt) {
 	});
 }
 
+function hardDelete(conn, table, conditions) {
+	return new Promise((resolve, reject) => {
+		var conditionStr = getConditionStr(conn, conditions);
+
+		conn.query(`
+			DELETE FROM ${table}
+			 ${conditionStr}
+		`, (err, results, fields) => {
+			if(err) {
+				return reject(err);
+			}
+
+			return resolve(results);
+		});
+	});
+}
+
 function beginTransaction(conn) {
 	return new Promise((resolve, reject) => {
 		conn.beginTransaction(err => {
@@ -216,6 +233,7 @@ module.exports = {
 	insert:     insert,
 	edit:       edit,
 	softDelete: softDelete,
+	hardDelete: hardDelete,
 
 	beginTransaction: beginTransaction,
 	commit:           commit,
