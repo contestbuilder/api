@@ -6,7 +6,9 @@ var status     = require('http-status'),
     bodyparser = require('body-parser'),
     secret     = require('../libraries/config.lib').env.secret,
     handleLib  = require('../libraries/handle.lib'),
-    utilQuery  = require('../queries/util.query');
+    userLib    = require('../libraries/user.lib'),
+    utilQuery  = require('../queries/util.query'),
+    userQuery  = require('../queries/user.query');
 
 module.exports = function(baseUrl) {
     var api = express.Router();
@@ -71,35 +73,33 @@ module.exports = function(baseUrl) {
 
     async function login(conn, req, res, next) {
         try {
-            var result = await utilQuery.query(conn, `
-                SELECT *
-                  FROM user
-                 WHERE username = '${req.body.username}'
-            `);
+            // search the user.
+            var user = await userQuery.getOneUser(conn, {
+                user_username: req.body.username
+            });
+            console.log(user);
 
-            var userDoc = result[0];
-
-            // if(userDoc.comparePassword(req.body.password)) {
+            // check the password
+            if(userLib.comparePassword(user.password, req.body.password)) {
+                console.log('right pass');
                 var token = jwt.sign({
-                    _id:         userDoc.id,
-                    name:        userDoc.name,
-                    username:    userDoc.username,
-                    email:       userDoc.email
-                    // permissions: userDoc.permissions
+                    _id:      user.id,
+                    name:     user.name,
+                    username: user.username,
+                    email:    user.email
                 }, secret, {
                     expiresIn: 7 * 24 * 60 * 60 // expires in a week
                 });
+                console.log(token);
 
                 return res.json({
                     success: true,
                     token:   token
                 });
-            // } else {
-            //  return Promise.reject({
-            //      status_code: status.UNAUTHORIZED,
-            //      message:     'Wrong password.'
-            //  });
-            // }
+            } else {
+                console.log('wrong');
+                throw 'Wrong password.';
+            }
         } catch(err) {
             return next({
                 error: err
@@ -107,15 +107,6 @@ module.exports = function(baseUrl) {
         } finally {
             conn.release();
         }
-   //      User.findOne({
-   //          username: req.body.username
-   //      })
-   //          .select('_id username email password permissions')
-            // .then(handleLib.handleFindOne)
-            // .then(function(userDoc) {
-   //          })
-   //          .then(handleLib.handleReturn.bind(null, res, null))
-			// .catch(handleLib.handleError.bind(null, res));
     }
 
     api.route(baseUrl + '/login')

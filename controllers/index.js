@@ -11,7 +11,7 @@ api.use(bodyparser.json());
 // crud
 api.use(require('./user.controller'));
 api.use(require('./contest.controller'));
-// api.use(require('./contributor.controller'));
+api.use(require('./contributor.controller'));
 api.use(require('./problem/problemCrud.controller'));
 api.use(require('./problem/problemFile.controller'));
 api.use(require('./solution.controller'));

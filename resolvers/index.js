@@ -7,7 +7,8 @@ var contestResolvers     = require('./contest.resolver'),
     customResolvers      = require('./custom.resolver'),
     testCaseResolvers    = require('./testCase.resolver'),
     solutionRunResolvers = require('./solutionRun.resolver'),
-    textResolvers        = require('./text.resolver');
+    textResolvers        = require('./text.resolver'),
+    fileResolvers        = require('./file.resolver');
 
 var resolvers = {
     Date: customResolvers.date,
@@ -19,7 +20,8 @@ var resolvers = {
         solution:     solutionResolvers.query,
         test_case:    testCaseResolvers.query,
         solution_run: solutionRunResolvers.query,
-        text:         textResolvers.query
+        text:         textResolvers.query,
+        file:         fileResolvers.query
     },
 
     User: userResolvers.fields,
@@ -34,7 +36,9 @@ var resolvers = {
 
     SolutionRun: solutionRunResolvers.fields,
 
-    Text: textResolvers.fields
+    Text: textResolvers.fields,
+
+    File: fileResolvers.fields
 };
 
 module.exports = resolvers;

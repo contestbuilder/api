@@ -6,10 +6,10 @@ var query = (args, something, context) => {
     return utilQuery.select(
         context.conn,
         '*',
-        'text',
+        'file',
         [],
         {
-            'id': args.text_id
+            'id': args.file_id
         }
     );
 };

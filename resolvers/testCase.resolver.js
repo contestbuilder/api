@@ -30,6 +30,30 @@ var fields = {
                 'id': parent.problem_id
             }
         );
+    },
+
+    input_file: (parent, args, context) => {
+        return utilQuery.selectOne(
+            context.conn,
+            '*',
+            'file',
+            null,
+            {
+                'id': parent.input_file_id
+            }
+        );
+    },
+
+    output_file: (parent, args, context) => {
+        return utilQuery.selectOne(
+            context.conn,
+            '*',
+            'file',
+            null,
+            {
+                'id': parent.output_file_id
+            }
+        );
     }
 };
 

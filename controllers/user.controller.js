@@ -3,6 +3,7 @@
 var express   = require('express'),
 	utilQuery = require('../queries/util.query'),
 	userQuery = require('../queries/user.query'),
+	userLib   = require('../libraries/user.lib'),
 	utilLib   = require('../libraries/util.lib'),
 	emailLib  = require('../libraries/email.lib');
 
@@ -55,39 +56,45 @@ async function createUser(conn, req, res, next) {
 }
 
 /**
- * Edit a contest.
+ * Edit a user.
  */
-async function editContest(conn, req, res, next) {
+async function editUser(conn, req, res, next) {
 	try {
-		// get the contest.
-		var contest = await contestQuery.getOneContest(conn, {
-			contest_nickname: req.params.nickname
+		// get the user.
+		var user = await userQuery.getOneUser(conn, {
+			user_id: +req.params.user_id
 		}, req.user);
 
 		// identify the fields that will be edited.
 		var fieldsToEdit = {};
 		[
-			'name', 'scheduled_to'
+			'name',
+			'username'
 		].forEach(paramName => {
 			if(req.body[paramName] !== undefined) {
 				fieldsToEdit[paramName] = req.body[paramName];
 			}
 		});
 
-		// edit the contest.
-		await utilQuery.edit(conn, 'contest', fieldsToEdit, {
-			id: contest.id
+		// rehash the password, if necessary.
+		if(req.body.password) {
+			fieldsToEdit['password'] = await userLib.hashPassword(req.body.password);
+		}
+
+		// edit the user.
+		await utilQuery.edit(conn, 'user', fieldsToEdit, {
+			id: user.id
 		});
 
-		// get the contest updated.
-		contest = await contestQuery.getOneContest(conn, {
-			contest_nickname: req.params.nickname
+		// get the user updated.
+		user = await userQuery.getOneUser(conn, {
+			id: user.id
 		}, req.user);
 
 		// return it.
 		return res.json({
 			success: true,
-			contest: contest
+			user:    user
 		});
 	} catch(err) {
 		return next({
@@ -144,8 +151,8 @@ var router = express.Router();
 router.route('/user/')
     .post(global.poolConnection.bind(null, createUser));
 
-// router.route('/contest/:nickname')
-//     .put(global.poolConnection.bind(null, editContest))
+router.route('/user/:user_id')
+    .put(global.poolConnection.bind(null, editUser));
 //     .delete(global.poolConnection.bind(null, removeContest));
 
 module.exports = router;

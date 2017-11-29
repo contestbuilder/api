@@ -51,6 +51,22 @@ async function runSolutions(conn, req, res, next) {
 				test_case_id: req.body.test_cases[testCaseIndex]
 			}, req.user);
 
+			if(testCase.input_text_id) {
+				var text = await utilQuery.selectOne(conn, '*', 'text', null, {
+					id: testCase.input_text_id
+				});
+
+				testCase.input = text.text;
+			}
+
+			if(testCase.output_text_id) {
+				var text = await utilQuery.selectOne(conn, '*', 'text', null, {
+					id: testCase.output_text_id
+				});
+
+				testCase.output = text.text;
+			}
+
 			testCases.push(testCase);
 		}
 
@@ -80,16 +96,34 @@ async function runSolutions(conn, req, res, next) {
 		for(var resultIndex=0; resultIndex<results.length; resultIndex++) {
 			var result = results[resultIndex];
 
-			await utilQuery.insert(conn, 'solution_run', {
+			var solutionRun = {
 				number:       (highestRunNumber.highest_run_number || 0) + 1,
 				solution_id:  result.context.solution.id,
 				test_case_id: result.context.testCase.id,
-				output:       result.success ? (result.output || '').substr(0, 1024) : result.err,
 				duration:     result.duration || 0,
 				success:      result.success,
 				verdict:      result.verdict,
 				timestamp:    new Date()
-			});
+			};
+
+			if(result.success) {
+				if((result.output || '').length <= 1024) {
+					solutionRun.output = (result.output || '');
+				} else {
+					solutionRun.output = result.output.substr(0, 1024);
+
+					var textInsertResult = await utilQuery.insert(conn, 'text', {
+		            	text: result.output
+		            });
+					result.output = solutionRun.output;
+
+		            solutionRun.output_text_id = textInsertResult.insertId;
+				}
+			} else {
+				solutionRun.output = (result.err || '').substr(0, 1024);
+			}
+
+			await utilQuery.insert(conn, 'solution_run', solutionRun);
 
 			delete result.context;
 		}

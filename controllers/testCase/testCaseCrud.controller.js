@@ -82,7 +82,7 @@ async function createTestCase(conn, req, res, next) {
                 fileLib.replacePathWithParams('testCaseTempFile', {
                     contest_nickname: contest.nickname,
                     problem_nickname: problem.nickname,
-                    file_name:        newTestCase.output_file_id
+                    file_name:        file.name
                 }),
                 file.version_id
             );
@@ -150,10 +150,8 @@ async function editTestCase(conn, req, res, next) {
 		// identify the fields that will be edited.
 		var fieldsToEdit = {};
 		[
-			{ key: 'input',       critical: true },
-			{ key: 'output',      critical: true },
-			{ key: 'input_file',  critical: true },
-			{ key: 'output_file', critical: true }
+			{ key: 'input',  critical: true },
+			{ key: 'output', critical: true }
 		].forEach(param => {
 			if(req.body[param.key] !== undefined) {
 				fieldsToEdit[param.key] = req.body[param.key];
@@ -163,6 +161,72 @@ async function editTestCase(conn, req, res, next) {
 				}
 			}
 		});
+
+		// large input.
+		if(req.body.input_file_id && req.body.input_file_id !== test_case.input_file_id) {
+			fieldsToEdit['input_file_id'] = req.body.input_file_id;
+			fieldsToEdit['last_edit'] = new Date();
+
+			if(req.body.input_large) {
+				var file = await utilQuery.selectOne(conn, '*', 'file', [], {
+					id: req.body.input_file_id
+				});
+
+				var inputFile = await aws.s3downloadFile(
+	                fileLib.replacePathWithParams('testCaseTempFile', {
+	                    contest_nickname: contest.nickname,
+	                    problem_nickname: problem.nickname,
+	                    file_name:        file.name
+	                }),
+	                file.version_id
+	            );
+
+	            var textInsertResult = await utilQuery.insert(conn, 'text', {
+	            	text: inputFile.Body
+	            });
+
+				fieldsToEdit['input_text_id'] = textInsertResult.insertId;
+			}
+		}
+		if(!req.body.input_file_id && test_case.input_file_id) {
+			fieldsToEdit['input_file_id'] = null;
+		}
+		if(!req.body.input_large && test_case.input_text_id) {
+			fieldsToEdit['input_text_id'] = null;
+		}
+
+		// large output.
+		if(req.body.output_file_id && req.body.output_file_id !== test_case.output_file_id) {
+			fieldsToEdit['output_file_id'] = req.body.output_file_id;
+			fieldsToEdit['last_edit'] = new Date();
+
+			if(req.body.output_large) {
+				var file = await utilQuery.selectOne(conn, '*', 'file', [], {
+					id: req.body.output_file_id
+				});
+
+				var outputFile = await aws.s3downloadFile(
+	                fileLib.replacePathWithParams('testCaseTempFile', {
+	                    contest_nickname: contest.nickname,
+	                    problem_nickname: problem.nickname,
+	                    file_name:        file.name
+	                }),
+	                file.version_id
+	            );
+
+	            var textInsertResult = await utilQuery.insert(conn, 'text', {
+	            	text: outputFile.Body
+	            });
+
+				fieldsToEdit['output_text_id'] = textInsertResult.insertId;
+			}
+		}
+		if(!req.body.output_file_id && test_case.output_file_id) {
+			fieldsToEdit['output_file_id'] = null;
+		}
+		if(!req.body.output_large && test_case.output_text_id) {
+			fieldsToEdit['output_text_id'] = null;
+		}
 
 		// edit the test_case.
 		await utilQuery.edit(conn, 'test_case', fieldsToEdit, {

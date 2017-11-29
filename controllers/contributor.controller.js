@@ -1,81 +1,50 @@
 'use strict';
 
-var express    = require('express'),
-    handleLib  = require('../libraries/handle.lib'),
-    models     = require('mongoose').models,
-    User       = models.User,
-    Contest    = models.Contest;
+var express      = require('express'),
+	utilQuery    = require('../queries/util.query'),
+	contestQuery = require('../queries/contest.query'),
+	userQuery    = require('../queries/user.query'),
+	utilLib      = require('../libraries/util.lib');
+
 
 /**
  * Controllers
  */
 
-function addContributor(req, res) {
-    var ctrl = {};
+/**
+ * Add a contributor.
+ */
+async function addContributor(conn, req, res, next) {
+	try {
+		// get the contest.
+		var contest = await contestQuery.getOneContest(conn, {
+			contest_nickname: req.params.nickname
+		}, req.user);
 
-    handleLib.handleRequired(req.body, [
-        'user_id'
-    ])
-    .then(function() {
-        return Contest.findOne({
-            nickname: req.params.nickname
-        });
-    })
-    .then(handleLib.handleFindOne)
-    .then(function(contestDoc) {
-        if(contestDoc.contributors.indexOf(req.body.user_id) !== -1) {
-            throw new Error('User is a contributor already.');
-        }
-        contestDoc.contributors.push(req.body.user_id);
+		// get the user.
+		var user = await userQuery.getOneUser(conn, {
+			user_id: req.body.user_id
+		}, req.user);
 
-        return contestDoc.save();
-    })
-    .then(function(contestDoc) {
-        ctrl.contestDoc = contestDoc;
+		// insert user as contributor.
+		await utilQuery.insert(conn, 'contest_contributor', {
+			contest_id: contest.id,
+			user_id:    user.id
+		});
 
-        return User.findById(req.body.user_id);
-    })
-    .then(function(userDoc) {
-        return handleLib.handleLog(req, ctrl.contestDoc, {
-            message: userDoc.username + ' foi adicionado como contribuidor.',
-            contest: ctrl.contestDoc._id
-        });
-    })
-    .then(handleLib.handleReturn.bind(null, res, 'contest'))
-    .catch(handleLib.handleError.bind(null, res));
+		// return ok result.
+		return res.json({
+			success: true
+		});
+	} catch(err) {
+		return next({
+			error: err
+		});
+	} finally {
+		conn.release();
+	}
 }
 
-function removeContributor(req, res) {
-    var ctrl = {};
-
-    Contest.findOne({
-        nickname: req.params.nickname
-    })
-    .then(handleLib.handleFindOne)
-    .then(function(contestDoc) {
-        ctrl.contestDoc = contestDoc;
-
-        return User.findById(req.params.user_id);
-    })
-    .then(function(userDoc) {
-        ctrl.userDoc = userDoc;
-
-        ctrl.contestDoc.contributors = ctrl.contestDoc.contributors.filter(function(c) {
-            return c.toString() != req.params.user_id;
-        });
-
-        return ctrl.contestDoc.save();
-    })
-    .then(function(contestDoc) {
-        return handleLib.handleLog(req, contestDoc, {
-            message: ctrl.userDoc.username + ' foi removido de contribuidor.',
-            contest: contestDoc._id
-        });
-    })
-    .then(handleLib.handlePopulate.bind(null, 'author contributors'))
-    .then(handleLib.handleReturn.bind(null, res, 'contest'))
-    .catch(handleLib.handleError.bind(null, res));
-}
 
 /**
  * Routes
@@ -84,9 +53,9 @@ function removeContributor(req, res) {
 var router = express.Router();
 
 router.route('/contest/:nickname/contributor/')
-    .post(addContributor);
+    .post(global.poolConnection.bind(null, addContributor));
 
-router.route('/contest/:nickname/contributor/:user_id')
-    .delete(removeContributor);
+// router.route('/contest/:nickname/contributor/:user_id')
+//     .delete(removeContributor);
 
 module.exports = router;
