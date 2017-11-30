@@ -21,6 +21,7 @@ api.use(require('./testCase/testCaseFile.controller'));
 // api.use(require('./log.controller'));
 // api.use(require('./email.controller'));
 // api.use(require('./boca.controller'));
+api.use(require('./invitation.controller'));
 
 // run
 api.use(require('./run.controller'));

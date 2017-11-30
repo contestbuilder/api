@@ -4,18 +4,10 @@ var bcrypt = require('bcrypt-nodejs');
 
 
 function hashPassword(password) {
-	return new Promise((resolve, reject) => {
-		bcrypt.hash(password, null, null, function(err, hash) {
-	        if(err) {
-	            return reject(err);
-	        }
-
-	        return resolve(hash);
-	    });
-	});
+	return bcrypt.hashSync(password);
 }
 
-function comparePassword(correctPassword, informedPassword) {
+function comparePassword(informedPassword, correctPassword) {
 	return bcrypt.compareSync(informedPassword, correctPassword);
 }
 

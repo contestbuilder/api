@@ -78,7 +78,7 @@ async function editUser(conn, req, res, next) {
 
 		// rehash the password, if necessary.
 		if(req.body.password) {
-			fieldsToEdit['password'] = await userLib.hashPassword(req.body.password);
+			fieldsToEdit['password'] = userLib.hashPassword(req.body.password);
 		}
 
 		// edit the user.

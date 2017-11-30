@@ -77,11 +77,9 @@ module.exports = function(baseUrl) {
             var user = await userQuery.getOneUser(conn, {
                 user_username: req.body.username
             });
-            console.log(user);
 
             // check the password
-            if(userLib.comparePassword(user.password, req.body.password)) {
-                console.log('right pass');
+            if(userLib.comparePassword(req.body.password, user.password)) {
                 var token = jwt.sign({
                     _id:      user.id,
                     name:     user.name,
@@ -90,14 +88,12 @@ module.exports = function(baseUrl) {
                 }, secret, {
                     expiresIn: 7 * 24 * 60 * 60 // expires in a week
                 });
-                console.log(token);
 
                 return res.json({
                     success: true,
                     token:   token
                 });
             } else {
-                console.log('wrong');
                 throw 'Wrong password.';
             }
         } catch(err) {
@@ -132,16 +128,13 @@ function isAuthorized(user, url, method) {
 
 var visitorsAllowed = [
 {
-    url   : '/user',
+    url:    '/login',
     method: 'POST'
 }, {
-    url   : '/login',
-    method: 'POST'
-}, {
-    url   : '/user',
+    url:    '/invitation/user',
     method: 'GET'
 }, {
-    url   : '/user',
+    url:    '/invitation/user',
     method: 'PUT'
 }
 ];
