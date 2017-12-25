@@ -6,22 +6,30 @@ var express = require('express'),
 
 
 function query(conn, req, res, next) {
-	graphql.graphql(
-		schemas,
-		req.body.query,
-		req.body.variables || {},
-		{
-			conn: conn,
-			user: req.user
-		}
-	).then(result => {
-		res.json(result);
-	}).catch(err => {
-		res.json({
-			success: false,
-			error:   err
+	try {
+		graphql.graphql(
+			schemas,
+			req.body.query,
+			req.body.variables || {},
+			{
+				conn: conn,
+				user: req.user
+			}
+		).then(result => {
+			res.json(result);
+		}).catch(err => {
+			res.json({
+				success: false,
+				error:   err
+			});
 		});
-	});
+	} catch(err) {
+		return next({
+			error: err
+		});
+	} finally {
+		conn.release();
+	}
 }
 
 
