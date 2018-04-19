@@ -4,7 +4,8 @@ var utilQuery = require('../queries/util.query'),
     userQuery = require('../queries/user.query');
 
 var query = (args, something, context) => {
-    return userQuery.getUsers(context.conn, args, context.user);
+    console.log('args', args, something);
+    return userQuery.getUsers(context.conn, something, context.user);
 };
 
 var fields = {

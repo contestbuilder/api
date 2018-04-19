@@ -1,11 +1,12 @@
 'use strict';
 
-var express = require('express'),
-	graphql = require('graphql'),
-	schemas = require('../schemas');
+var express        = require('express'),
+	graphql        = require('graphql'),
+	expressGraphql = require('express-graphql'),
+	schemas        = require('../schemas');
 
 
-function query(conn, req, res, next) {
+function query(req, res, next) {
 	try {
 		graphql.graphql(
 			schemas,
@@ -27,9 +28,28 @@ function query(conn, req, res, next) {
 		return next({
 			error: err
 		});
-	} finally {
-		conn.release();
 	}
+}
+
+function expressGraphqlQuery(req, res, next) {
+	try {
+		return expressGraphql({
+			schema:   schemas,
+			context:  req,
+			graphiql: true
+		})(req, res, next);
+	} catch(err) {
+		return next({
+			error: err
+		});
+	} finally {
+		// next();
+	}
+}
+
+function whatever(req, res, next) {
+	res.json({ ok: 1 });
+	next();
 }
 
 
@@ -41,6 +61,12 @@ function query(conn, req, res, next) {
 var router = express.Router();
 
 router.route('/graphql')
-	.post(global.poolConnection.bind(null, query));
+	.post(query);
+
+router.route('/graphqli')
+	.get(expressGraphqlQuery)
+	.post(expressGraphqlQuery);
+
+router.get('/whatever', whatever);
 
 module.exports = router;

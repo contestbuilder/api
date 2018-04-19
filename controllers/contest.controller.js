@@ -13,8 +13,8 @@ var express      = require('express'),
 /**
  * Create a contest.
  */
-async function createContest(conn, req, res, next) {
-	await utilQuery.beginTransaction(conn);
+async function createContest(req, res, next) {
+	await utilQuery.beginTransaction(req.conn);
 	try {
 		// new contest object.
 		var newContest = {
@@ -25,19 +25,19 @@ async function createContest(conn, req, res, next) {
 		};
 
 		// insert the contest.
-		var insertResult = await utilQuery.insert(conn, 'contest', newContest);
+		var insertResult = await utilQuery.insert(req.conn, 'contest', newContest);
 
 		// insert the author (current logged user) as a contributor.
-		await utilQuery.insert(conn, 'contest_contributor', {
+		await utilQuery.insert(req.conn, 'contest_contributor', {
 			contest_id: insertResult.insertId,
 			user_id:    req.user._id
 		});
 
 		// commit changes.
-		await utilQuery.commit(conn);
+		await utilQuery.commit(req.conn);
 
 		// get the inserted contest.
-		newContest = await contestQuery.getOneContest(conn, {
+		newContest = await contestQuery.getOneContest(req.conn, {
 			contest_id: insertResult.insertId
 		}, req.user);
 
@@ -47,13 +47,13 @@ async function createContest(conn, req, res, next) {
 			contest: newContest
 		});
 	} catch(err) {
-		await utilQuery.rollback(conn);
+		await utilQuery.rollback(req.conn);
 
 		return next({
 			error: err
 		});
 	} finally {
-		conn.release();
+		req.conn.release();
 	}
 }
 
@@ -145,7 +145,7 @@ async function editContest(conn, req, res, next) {
 var router = express.Router();
 
 router.route('/contest/')
-    .post(global.poolConnection.bind(null, createContest));
+    .post(createContest);
 
 router.route('/contest/:nickname')
     .put(global.poolConnection.bind(null, editContest))

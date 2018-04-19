@@ -4,7 +4,7 @@ var utilQuery    = require('../queries/util.query'),
     contestQuery = require('../queries/contest.query');
 
 var query = (args, something, context) => {
-    return contestQuery.getContests(context.conn, args, context.user);
+    return contestQuery.getContests(context.conn, something, context.user);
 };
 
 var fields = {
@@ -30,7 +30,8 @@ var fields = {
                 condition: 'cb.user_id = u.id'
             }],
             {
-                'cb.contest_id': parent.id
+                'cb.contest_id': parent.id,
+                'cb.user_id':    args.id
             }
         );
     },

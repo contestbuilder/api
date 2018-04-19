@@ -71,10 +71,10 @@ module.exports = function(baseUrl) {
         });
     });
 
-    async function login(conn, req, res, next) {
+    async function login(req, res, next) {
         try {
             // search the user.
-            var user = await userQuery.getOneUser(conn, {
+            var user = await userQuery.getOneUser(req.conn, {
                 user_username: req.body.username
             });
 
@@ -100,13 +100,11 @@ module.exports = function(baseUrl) {
             return next({
                 error: err
             });
-        } finally {
-            conn.release();
         }
     }
 
     api.route(baseUrl + '/login')
-    	.post(global.poolConnection.bind(null, login));
+    	.post(login);
 
     return api;
 };
@@ -136,5 +134,11 @@ var visitorsAllowed = [
 }, {
     url:    '/invitation/user',
     method: 'PUT'
-}
+}, {
+    url:    '/graphqli',
+    method: 'GET'
+}, {
+    url:    '/graphqli',
+    method: 'POST'
+}, { url: '/whatever', method: 'GET' }
 ];

@@ -10,7 +10,7 @@ module.exports = `
         scheduled_to: Int
         deleted_at:   Date
 
-        contributors: [User]
-        problems:     [Problem]
+        contributors(id: Int): [User]
+        problems:              [Problem]
     }
 `;
