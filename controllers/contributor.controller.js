@@ -14,20 +14,20 @@ var express      = require('express'),
 /**
  * Add a contributor.
  */
-async function addContributor(conn, req, res, next) {
+async function addContributor(req, res, next) {
 	try {
 		// get the contest.
-		var contest = await contestQuery.getOneContest(conn, {
+		var contest = await contestQuery.getOneContest(req.conn, {
 			contest_nickname: req.params.nickname
 		}, req.user);
 
 		// get the user.
-		var user = await userQuery.getOneUser(conn, {
+		var user = await userQuery.getOneUser(req.conn, {
 			user_id: req.body.user_id
 		}, req.user);
 
 		// insert user as contributor.
-		await utilQuery.insert(conn, 'contest_contributor', {
+		await utilQuery.insert(req.conn, 'contest_contributor', {
 			contest_id: contest.id,
 			user_id:    user.id
 		});
@@ -41,7 +41,58 @@ async function addContributor(conn, req, res, next) {
 			error: err
 		});
 	} finally {
-		conn.release();
+		return next();
+	}
+}
+
+/**
+  * Remove a contributor.
+  */
+async function removeContributor(req, res, next) {
+	try {
+		// get the contest.
+		var contest = await contestQuery.getOneContest(req.conn, {
+			contest_nickname: req.params.nickname
+		}, req.user);
+
+		// get the user.
+		var user = await userQuery.getOneUser(req.conn, {
+			user_id: +req.params.user_id
+		}, req.user);
+
+		// get the contributor.
+		var contributor = await utilQuery.selectOne(
+			req.conn,
+			'cb.*',
+			'contest_contributor cb',
+			null,
+			{
+				'cb.contest_id': contest.id,
+				'cb.user_id':    user.id
+			}
+		);
+
+		// remove contributor.
+		await utilQuery.hardDelete(
+			req.conn,
+			'contest_contributor',
+			{
+				'contest_id': contest.id,
+				'user_id':    user.id
+			}
+		);
+
+		// return ok result.
+		return res.json({
+			success: true,
+			contest: contest
+		});
+	} catch(err) {
+		return next({
+			error: err
+		});
+	} finally {
+		return next();
 	}
 }
 
@@ -53,9 +104,9 @@ async function addContributor(conn, req, res, next) {
 var router = express.Router();
 
 router.route('/contest/:nickname/contributor/')
-    .post(global.poolConnection.bind(null, addContributor));
+    .post(addContributor);
 
-// router.route('/contest/:nickname/contributor/:user_id')
-//     .delete(removeContributor);
+router.route('/contest/:nickname/contributor/:user_id')
+    .delete(removeContributor);
 
 module.exports = router;

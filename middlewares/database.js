@@ -14,13 +14,13 @@ var dbPool = mysql.createPool({
 });
 
 module.exports = function(req, res, next) {
-	console.log('pool');
 	dbPool.getConnection((err, conn) => {
 		if(err) {
 			return next(err);
 		}
 
 		req.conn = conn;
+		console.log('got connection');
 		return next();
 	});
 };

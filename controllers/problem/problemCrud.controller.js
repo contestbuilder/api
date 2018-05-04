@@ -14,15 +14,15 @@ var express      = require('express'),
 /**
  * Create a problem.
  */
-async function createProblem(conn, req, res, next) {
+async function createProblem(req, res, next) {
 	try {
 		// get the contest in which the problem will be inserted.
-		var contest = await contestQuery.getOneContest(conn, {
+		var contest = await contestQuery.getOneContest(req.conn, {
 			contest_nickname: req.params.nickname
 		}, req.user);
 
 		// count how many active problems there on this contest.
-		var currentProblemsCount = await contestQuery.countProblems(conn, {
+		var currentProblemsCount = await contestQuery.countProblems(req.conn, {
 			contest_id: contest.id
 		}, req.user);
 
@@ -33,15 +33,25 @@ async function createProblem(conn, req, res, next) {
 			description: req.body.description,
 			time_limit:  req.body.time_limit,
 			order:       currentProblemsCount.count + 1,
-			author_id:   req.user._id,
+			author_id:   req.user.id,
 			contest_id:  contest.id
 		};
 
+		// insert file.
+		if(req.body.file && req.body.file.name && req.body.file.path) {
+	        var insertFileResult = await utilQuery.insert(req.conn, 'file', {
+	            name: req.body.file.name,
+	            path: req.body.file.path
+	        });
+
+	        newProblem.file_id = insertFileResult.insertId;
+		}
+
 		// insert the problem.
-		var insertResult = await utilQuery.insert(conn, 'problem', newProblem);
+		var insertResult = await utilQuery.insert(req.conn, 'problem', newProblem);
 
 		// get the inserted problem.
-		newProblem = await problemQuery.getOneProblem(conn, {
+		newProblem = await problemQuery.getOneProblem(req.conn, {
 			problem_id: insertResult.insertId
 		}, req.user);
 
@@ -55,22 +65,22 @@ async function createProblem(conn, req, res, next) {
 			error: err
 		});
 	} finally {
-		conn.release();
+		return next();
 	}
 }
 
 /**
  * Edit a problem.
  */
-async function editProblem(conn, req, res, next) {
+async function editProblem(req, res, next) {
 	try {
 		// get the contest that has the problem being edited.
-		var contest = await contestQuery.getOneContest(conn, {
+		var contest = await contestQuery.getOneContest(req.conn, {
 			contest_nickname: req.params.nickname
 		}, req.user);
 
 		// get the problem to be edited.
-		var problem = await problemQuery.getOneProblem(conn, {
+		var problem = await problemQuery.getOneProblem(req.conn, {
 			problem_nickname: req.params.problem_nickname,
 			deleted_at: {
 				$isNull: true
@@ -87,13 +97,30 @@ async function editProblem(conn, req, res, next) {
 			}
 		});
 
+		// check if the file was edited.
+		// old file removed:
+		if(problem.file_id && !req.body.file) {
+			delete problem.file_id;
+			fieldsToEdit['file_id'] = null;
+		}
+		// file added:
+		if(!problem.file_id && req.body.new_file) {
+	        var insertFileResult = await utilQuery.insert(req.conn, 'file', {
+	            name: req.body.new_file.name,
+	            path: req.body.new_file.path
+	        });
+
+	        problem.file_id = insertFileResult.insertId;
+	        fieldsToEdit['file_id'] = problem.file_id;
+		}
+
 		// edit the problem.
-		await utilQuery.edit(conn, 'problem', fieldsToEdit, {
+		await utilQuery.edit(req.conn, 'problem', fieldsToEdit, {
 			id: problem.id
 		});
 
 		// get the problem updated.
-		problem = await problemQuery.getOneProblem(conn, {
+		problem = await problemQuery.getOneProblem(req.conn, {
 			problem_id: problem.id,
 			deleted_at: {
 				$isNull: true
@@ -110,23 +137,23 @@ async function editProblem(conn, req, res, next) {
 			error: err
 		});
 	} finally {
-		conn.release();
+		return next();
 	}
 }
 
 /**
  * Disable a problem.
  */
-async function removeProblem(conn, req, res, next) {
-	await utilQuery.beginTransaction(conn);
+async function removeProblem(req, res, next) {
+	await utilQuery.beginTransaction(req.conn);
 	try {
 		// get the contest that has the problem that will be removed.
-		var contest = await contestQuery.getOneContest(conn, {
+		var contest = await contestQuery.getOneContest(req.conn, {
 			contest_nickname: req.params.nickname
 		}, req.user);
 
 		// get the problem to be removed.
-		var problem = await problemQuery.getOneProblem(conn, {
+		var problem = await problemQuery.getOneProblem(req.conn, {
 			problem_nickname: req.params.problem_nickname,
 			deleted_at: {
 				$isNull: true
@@ -134,14 +161,14 @@ async function removeProblem(conn, req, res, next) {
 		}, req.user);
 
 		// remove the problem.
-		await utilQuery.edit(conn, 'problem', {
+		await utilQuery.edit(req.conn, 'problem', {
 			deleted_at: new Date()
 		}, {
 			id: problem.id
 		});
 
 		// reorder the problems accordingly.
-		var remainingProblems = await problemQuery.getProblems(conn, {
+		var remainingProblems = await problemQuery.getProblems(req.conn, {
 			contest_id: contest.id,
 			deleted_at: {
 				$isNull: true
@@ -151,20 +178,20 @@ async function removeProblem(conn, req, res, next) {
 			var remainingProblem = remainingProblems[index];
 
 			if(remainingProblem.order > problem.order) {
-				await utilQuery.edit(conn, 'problem', {
+				await utilQuery.edit(req.conn, 'problem', {
 					order: remainingProblem.order - 1
 				}, {
 					id: remainingProblem.id
 				});
 			}
 		}
-		await utilQuery.commit(conn);
+		await utilQuery.commit(req.conn);
 
 		// get the problem updated.
-		problem = await problemQuery.getOneProblem(conn, {
+		problem = await problemQuery.getOneProblem(req.conn, {
 			problem_id: problem.id,
 			deleted_at: {
-				$isNull: true
+				$isNull: false
 			}
 		}, req.user);
 
@@ -174,13 +201,13 @@ async function removeProblem(conn, req, res, next) {
 			problem: problem
 		});
 	} catch(err) {
-		await utilQuery.rollback(conn);
+		await utilQuery.rollback(req.conn);
 
 		return next({
 			error: err
 		});
 	} finally {
-		conn.release();
+		return next();
 	}
 }
 
@@ -192,10 +219,10 @@ async function removeProblem(conn, req, res, next) {
 var router = express.Router();
 
 router.route('/contest/:nickname/problem/')
-    .post(global.poolConnection.bind(null, createProblem));
+    .post(createProblem);
 
 router.route('/contest/:nickname/problem/:problem_nickname')
-    .put(global.poolConnection.bind(null, editProblem))
-    .delete(global.poolConnection.bind(null, removeProblem));
+    .put(editProblem)
+    .delete(removeProblem);
 
 module.exports = router;

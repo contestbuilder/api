@@ -10,7 +10,13 @@ module.exports = `
         scheduled_to: Int
         deleted_at:   Date
 
-        contributors(id: Int): [User]
-        problems:              [Problem]
+        contributors(
+            contributor_id: Int
+        ): [User]
+
+        problems(
+            problem_id:   Int,
+            show_deleted: Boolean
+        ): [Problem]
     }
 `;

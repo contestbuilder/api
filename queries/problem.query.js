@@ -16,7 +16,7 @@ function getProblems(conn, args, user) {
 			condition: 'c.id = p.contest_id'
 		}],
 		{
-			'cc.user_id': user._id,
+			'cc.user_id': user.id,
 			'c.id':       args.contest_id,
 			'c.nickname': args.contest_nickname,
 			'p.id':       args.problem_id,
@@ -36,7 +36,7 @@ function getOneProblem(conn, args, user) {
 			condition: 'cc.contest_id = p.contest_id'
 		}],
 		{
-			'cc.user_id':   user._id,
+			'cc.user_id':   user.id,
 			'p.id':         args.problem_id,
 			'p.nickname':   args.problem_nickname,
 			'p.deleted_at': args.deleted_at
@@ -50,8 +50,15 @@ function countSolutions(conn, args, user) {
 		conn,
 		'count(*) as count',
 		'solution s',
-		[],
+		[{
+			table:     'problem p',
+			condition: 'p.id = s.problem_id'
+		}, {
+            table:     'contest_contributor cb',
+            condition: 'cb.contest_id = p.contest_id'
+        }],
 		{
+			'cb.user_id':   user.id,
 			's.problem_id': args.problem_id,
 			's.deleted_at': {
 				$isNull: true
@@ -66,8 +73,15 @@ function countTestCases(conn, args, user) {
 		conn,
 		'count(*) as count',
 		'test_case tc',
-		[],
+		[{
+			table:     'problem p',
+			condition: 'p.id = tc.problem_id'
+		}, {
+			table:     'contest_contributor cb',
+			condition: 'cb.contest_id = p.contest_id'
+		}],
 		{
+			'cb.user_id':    user.id,
 			'tc.problem_id': args.problem_id,
 			'tc.deleted_at': {
 				$isNull: true

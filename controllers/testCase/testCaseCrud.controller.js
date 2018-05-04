@@ -17,21 +17,21 @@ var express       = require('express'),
 /**
  * Create a test case.
  */
-async function createTestCase(conn, req, res, next) {
-	await utilQuery.beginTransaction(conn);
+async function createTestCase(req, res, next) {
+	await utilQuery.beginTransaction(req.conn);
 	try {
 		// get the contest.
-		var contest = await contestQuery.getOneContest(conn, {
+		var contest = await contestQuery.getOneContest(req.conn, {
 			contest_nickname: req.params.nickname
 		}, req.user);
 
 		// get the problem.
-		var problem = await problemQuery.getOneProblem(conn, {
+		var problem = await problemQuery.getOneProblem(req.conn, {
 			problem_nickname: req.params.problem_nickname
 		}, req.user);
 
 		// count how many active test cases there are for this problem.
-		var currentTestCasesCount = await problemQuery.countTestCases(conn, {
+		var currentTestCasesCount = await problemQuery.countTestCases(req.conn, {
 			contest_id: contest.id,
 			problem_id: problem.id
 		}, req.user);
@@ -46,13 +46,13 @@ async function createTestCase(conn, req, res, next) {
 			output_text_id: null,
 			order:          currentTestCasesCount.count + 1,
 			last_edit:      new Date(),
-			author_id:      req.user._id,
+			author_id:      req.user.id,
 			problem_id:     problem.id
 		};
 
 		// large input.
 		if(req.body.input_file_id && req.body.input_large) {
-			var file = await utilQuery.selectOne(conn, '*', 'file', [], {
+			var file = await utilQuery.selectOne(req.conn, '*', 'file', [], {
 				id: req.body.input_file_id
 			});
 
@@ -65,7 +65,7 @@ async function createTestCase(conn, req, res, next) {
                 file.version_id
             );
 
-            var textInsertResult = await utilQuery.insert(conn, 'text', {
+            var textInsertResult = await utilQuery.insert(req.conn, 'text', {
             	text: inputFile.Body
             });
 
@@ -74,7 +74,7 @@ async function createTestCase(conn, req, res, next) {
 
 		// large output.
 		if(req.body.output_file_id && req.body.output_large) {
-			var file = await utilQuery.selectOne(conn, '*', 'file', [], {
+			var file = await utilQuery.selectOne(req.conn, '*', 'file', [], {
 				id: req.body.output_file_id
 			});
 
@@ -87,7 +87,7 @@ async function createTestCase(conn, req, res, next) {
                 file.version_id
             );
 
-            var textInsertResult = await utilQuery.insert(conn, 'text', {
+            var textInsertResult = await utilQuery.insert(req.conn, 'text', {
             	text: outputFile.Body
             });
 
@@ -95,13 +95,13 @@ async function createTestCase(conn, req, res, next) {
 		}
 
 		// insert the test case.
-		var insertResult = await utilQuery.insert(conn, 'test_case', newTestCase);
+		var insertResult = await utilQuery.insert(req.conn, 'test_case', newTestCase);
 
 		// commit it all.
-		await utilQuery.commit(conn);
+		await utilQuery.commit(req.conn);
 
 		// get the inserted test case.
-		newTestCase = await testCaseQuery.getOneTestCase(conn, {
+		newTestCase = await testCaseQuery.getOneTestCase(req.conn, {
 			test_case_id: insertResult.insertId
 		}, req.user);
 
@@ -111,28 +111,28 @@ async function createTestCase(conn, req, res, next) {
 			test_case: newTestCase
 		});
 	} catch(err) {
-		await utilQuery.rollback(conn);
+		await utilQuery.rollback(req.conn);
 
 		return next({
 			error: err
 		});
 	} finally {
-		conn.release();
+		return next();
 	}
 }
 
 /**
  * Edit a test case.
  */
-async function editTestCase(conn, req, res, next) {
+async function editTestCase(req, res, next) {
 	try {
 		// get the contest.
-		var contest = await contestQuery.getOneContest(conn, {
+		var contest = await contestQuery.getOneContest(req.conn, {
 			contest_nickname: req.params.nickname
 		}, req.user);
 
 		// get the problem.
-		var problem = await problemQuery.getOneProblem(conn, {
+		var problem = await problemQuery.getOneProblem(req.conn, {
 			problem_nickname: req.params.problem_nickname,
 			deleted_at: {
 				$isNull: true
@@ -140,7 +140,7 @@ async function editTestCase(conn, req, res, next) {
 		}, req.user);
 
 		// get the test case.
-		var test_case = await testCaseQuery.getOneTestCase(conn, {
+		var test_case = await testCaseQuery.getOneTestCase(req.conn, {
 			test_case_id: +req.params.test_case_id,
 			deleted_at: {
 				$isNull: true
@@ -168,7 +168,7 @@ async function editTestCase(conn, req, res, next) {
 			fieldsToEdit['last_edit'] = new Date();
 
 			if(req.body.input_large) {
-				var file = await utilQuery.selectOne(conn, '*', 'file', [], {
+				var file = await utilQuery.selectOne(req.conn, '*', 'file', [], {
 					id: req.body.input_file_id
 				});
 
@@ -181,7 +181,7 @@ async function editTestCase(conn, req, res, next) {
 	                file.version_id
 	            );
 
-	            var textInsertResult = await utilQuery.insert(conn, 'text', {
+	            var textInsertResult = await utilQuery.insert(req.conn, 'text', {
 	            	text: inputFile.Body
 	            });
 
@@ -201,7 +201,7 @@ async function editTestCase(conn, req, res, next) {
 			fieldsToEdit['last_edit'] = new Date();
 
 			if(req.body.output_large) {
-				var file = await utilQuery.selectOne(conn, '*', 'file', [], {
+				var file = await utilQuery.selectOne(req.conn, '*', 'file', [], {
 					id: req.body.output_file_id
 				});
 
@@ -214,7 +214,7 @@ async function editTestCase(conn, req, res, next) {
 	                file.version_id
 	            );
 
-	            var textInsertResult = await utilQuery.insert(conn, 'text', {
+	            var textInsertResult = await utilQuery.insert(req.conn, 'text', {
 	            	text: outputFile.Body
 	            });
 
@@ -229,12 +229,12 @@ async function editTestCase(conn, req, res, next) {
 		}
 
 		// edit the test_case.
-		await utilQuery.edit(conn, 'test_case', fieldsToEdit, {
+		await utilQuery.edit(req.conn, 'test_case', fieldsToEdit, {
 			id: test_case.id
 		});
 
 		// get the test_case updated.
-		test_case = await testCaseQuery.getOneTestCase(conn, {
+		test_case = await testCaseQuery.getOneTestCase(req.conn, {
 			test_case_id: test_case.id,
 			deleted_at: {
 				$isNull: true
@@ -251,23 +251,23 @@ async function editTestCase(conn, req, res, next) {
 			error: err
 		});
 	} finally {
-		conn.release();
+		return next();
 	}
 }
 
 /**
  * Disable a test case.
  */
-async function removeTestCase(conn, req, res, next) {
-	await utilQuery.beginTransaction(conn);
+async function removeTestCase(req, res, next) {
+	await utilQuery.beginTransaction(req.conn);
 	try {
 		// get the contest.
-		var contest = await contestQuery.getOneContest(conn, {
+		var contest = await contestQuery.getOneContest(req.conn, {
 			contest_nickname: req.params.nickname
 		}, req.user);
 
 		// get the problem.
-		var problem = await problemQuery.getOneProblem(conn, {
+		var problem = await problemQuery.getOneProblem(req.conn, {
 			problem_nickname: req.params.problem_nickname,
 			deleted_at: {
 				$isNull: true
@@ -275,22 +275,22 @@ async function removeTestCase(conn, req, res, next) {
 		}, req.user);
 
 		// get the test case.
-		var test_case = await testCaseQuery.getOneTestCase(conn, {
-			test_case_id: req.params.test_case_id,
+		var test_case = await testCaseQuery.getOneTestCase(req.conn, {
+			test_case_id: +req.params.test_case_id,
 			deleted_at: {
 				$isNull: true
 			}
 		}, req.user);
 
 		// remove the test case.
-		await utilQuery.edit(conn, 'test_case', {
+		await utilQuery.edit(req.conn, 'test_case', {
 			deleted_at: new Date()
 		}, {
 			id: test_case.id
 		});
 
 		// reorder the test cases accordingly.
-		var remainingTestCases = await testCaseQuery.getTestCases(conn, {
+		var remainingTestCases = await testCaseQuery.getTestCases(req.conn, {
 			problem_id: problem.id,
 			deleted_at: {
 				$isNull: true
@@ -299,21 +299,21 @@ async function removeTestCase(conn, req, res, next) {
 		for(var index=0; index<remainingTestCases.length; index++) {
 			var remainingTestCase = remainingTestCases[index];
 
-			if(remainingTestCase.order > solution.order) {
-				await utilQuery.edit(conn, 'test_case', {
+			if(remainingTestCase.order > test_case.order) {
+				await utilQuery.edit(req.conn, 'test_case', {
 					order: remainingTestCase.order - 1
 				}, {
 					id: remainingTestCase.id
 				});
 			}
 		}
-		await utilQuery.commit(conn);
+		await utilQuery.commit(req.conn);
 
 		// get the test case updated.
-		test_case = await testCaseQuery.getOneTestCase(conn, {
+		test_case = await testCaseQuery.getOneTestCase(req.conn, {
 			test_case_id: test_case.id,
 			deleted_at: {
-				$isNull: true
+				$isNull: false
 			}
 		}, req.user);
 
@@ -323,13 +323,13 @@ async function removeTestCase(conn, req, res, next) {
 			test_case: test_case
 		});
 	} catch(err) {
-		await utilQuery.rollback(conn);
+		await utilQuery.rollback(req.conn);
 
 		return next({
 			error: err
 		});
 	} finally {
-		conn.release();
+		return next();
 	}
 }
 
@@ -341,10 +341,10 @@ async function removeTestCase(conn, req, res, next) {
 var router = express.Router();
 
 router.route('/contest/:nickname/problem/:problem_nickname/test_case')
-    .post(global.poolConnection.bind(null, createTestCase));
+    .post(createTestCase);
 
 router.route('/contest/:nickname/problem/:problem_nickname/test_case/:test_case_id')
-    .put(global.poolConnection.bind(null, editTestCase))
-    .delete(global.poolConnection.bind(null, removeTestCase));
+    .put(editTestCase)
+    .delete(removeTestCase);
 
 module.exports = router;

@@ -18,7 +18,7 @@ async function createContest(req, res, next) {
 	try {
 		// new contest object.
 		var newContest = {
-			author_id:  req.user._id,
+			author_id:  req.user.id,
 			name:       req.body.name,
 			nickname:   utilLib.getNickname(req.body.name),
 			created_at: new Date()
@@ -30,7 +30,7 @@ async function createContest(req, res, next) {
 		// insert the author (current logged user) as a contributor.
 		await utilQuery.insert(req.conn, 'contest_contributor', {
 			contest_id: insertResult.insertId,
-			user_id:    req.user._id
+			user_id:    req.user.id
 		});
 
 		// commit changes.
@@ -53,17 +53,17 @@ async function createContest(req, res, next) {
 			error: err
 		});
 	} finally {
-		req.conn.release();
+		return next();
 	}
 }
 
 /**
  * Edit a contest.
  */
-async function editContest(conn, req, res, next) {
+async function editContest(req, res, next) {
 	try {
 		// get the contest.
-		var contest = await contestQuery.getOneContest(conn, {
+		var contest = await contestQuery.getOneContest(req.conn, {
 			contest_nickname: req.params.nickname
 		}, req.user);
 
@@ -78,12 +78,12 @@ async function editContest(conn, req, res, next) {
 		});
 
 		// edit the contest.
-		await utilQuery.edit(conn, 'contest', fieldsToEdit, {
+		await utilQuery.edit(req.conn, 'contest', fieldsToEdit, {
 			id: contest.id
 		});
 
 		// get the contest updated.
-		contest = await contestQuery.getOneContest(conn, {
+		contest = await contestQuery.getOneContest(req.conn, {
 			contest_id: contest.id
 		}, req.user);
 
@@ -97,29 +97,29 @@ async function editContest(conn, req, res, next) {
 			error: err
 		});
 	} finally {
-		conn.release();
+		return next();
 	}
 }
 
 /**
  * Disable a contest.
  */
- async function removeContest(conn, req, res, next) {
+ async function removeContest(req, res, next) {
  	try {
  		// get the contest to be removed.
-		var contest = await contestQuery.getOneContest(conn, {
+		var contest = await contestQuery.getOneContest(req.conn, {
 			contest_nickname: req.params.nickname
 		}, req.user);
 
 		// remove it.
-		await utilQuery.edit(conn, 'contest', {
+		await utilQuery.edit(req.conn, 'contest', {
 			deleted_at: new Date()
 		}, {
 			id: contest.id
 		});
 
  		// get the contest updated.
-		contest = await contestQuery.getOneContest(conn, {
+		contest = await contestQuery.getOneContest(req.conn, {
 			contest_id: contest.id
 		}, req.user);
 
@@ -133,7 +133,7 @@ async function editContest(conn, req, res, next) {
  			error: err
  		});
  	} finally {
- 		conn.release();
+ 		return next();
  	}
  }
 
@@ -148,7 +148,7 @@ router.route('/contest/')
     .post(createContest);
 
 router.route('/contest/:nickname')
-    .put(global.poolConnection.bind(null, editContest))
-    .delete(global.poolConnection.bind(null, removeContest));
+    .put(editContest)
+    .delete(removeContest);
 
 module.exports = router;

@@ -19,7 +19,7 @@ function getSolutions(conn, args, user) {
 			condition: 'cc.contest_id = c.id'
 		}],
 		{
-			'cc.user_id': user._id,
+			'cc.user_id': user.id,
 			'c.id':       args.contest_id,
 			'c.nickname': args.contest_nickname,
 			'p.id':       args.problem_id,
@@ -44,7 +44,7 @@ function getOneSolution(conn, args, user) {
 			condition: 'cc.contest_id = p.contest_id'
 		}],
 		{
-			'cc.user_id':   user._id,
+			'cc.user_id':   user.id,
 			's.id':         args.solution_id,
 			's.nickname':   args.solution_nickname,
 			's.deleted_at': args.deleted_at

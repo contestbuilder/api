@@ -13,7 +13,7 @@ function getContests(conn, args, user) {
             condition: 'cb.contest_id = c.id'
         }],
 		{
-			'cb.user_id': user._id,
+			'cb.user_id': user.id,
             'c.id':       args.contest_id,
             'c.nickname': args.contest_nickname
 		}
@@ -31,7 +31,7 @@ function getOneContest(conn, args, user) {
             condition: 'cb.contest_id = c.id'
         }],
 		{
-			'cb.user_id': user._id,
+			'cb.user_id': user.id,
             'c.id':       args.contest_id,
             'c.nickname': args.contest_nickname
 		}
@@ -44,8 +44,12 @@ function countProblems(conn, args, user) {
 		conn,
 		'count(*) as count',
 		'problem p',
-		[],
+		[{
+            table:     'contest_contributor cb',
+            condition: 'cb.contest_id = p.contest_id'
+        }],
 		{
+			'cb.user_id':   user.id,
 			'p.contest_id': args.contest_id,
 			'p.deleted_at': {
 				$isNull: true

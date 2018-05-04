@@ -14,6 +14,9 @@ module.exports = `
         deleted_at:       Date
 
         problem: Problem
-        runs:    [SolutionRun]
+
+        runs(
+            solution_run_id: Int
+        ): [SolutionRun]
     }
 `;

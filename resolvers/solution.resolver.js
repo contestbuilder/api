@@ -3,7 +3,7 @@
 var utilQuery     = require('../queries/util.query'),
     solutionQuery = require('../queries/solution.query');
 
-var query = (args, something, context) => {
+var query = (obj, args, context) => {
     return solutionQuery.getSolutions(context.conn, args, context.user);
 };
 

@@ -13,20 +13,20 @@ var express   = require('express'),
 /**
  * Get a user.
  */
-async function getUser(conn, req, res, next) {
+async function getUser(req, res, next) {
 	try {
 		// get user.
 		var user = await utilQuery.selectOne(
-			conn,
+			req.conn,
 			'u.id, u.name, u.username, u.email',
 			'user u',
 			[],
 			{
-				'u.id': +req.params.user_id,
+				'u.id':       +req.params.user_id,
 				'u.password': {
 					$isNull: true
 				}
-			}, true
+			}
 		);
 
 		// return it.
@@ -39,23 +39,23 @@ async function getUser(conn, req, res, next) {
 			error: err
 		});
 	} finally {
-		conn.release();
+		return next();
 	}
 }
 
 /**
  * Edit a user.
  */
-async function editUser(conn, req, res, next) {
+async function editUser(req, res, next) {
 	try {
 		// get user.
 		var user = await utilQuery.selectOne(
-			conn,
+			req.conn,
 			'u.id, u.name, u.username',
 			'user u',
 			[],
 			{
-				id: +req.params.user_id,
+				id:       +req.params.user_id,
 				password: {
 					$isNull: true
 				}
@@ -79,13 +79,13 @@ async function editUser(conn, req, res, next) {
 		}
 
 		// edit the user.
-		await utilQuery.edit(conn, 'user', fieldsToEdit, {
+		await utilQuery.edit(req.conn, 'user', fieldsToEdit, {
 			id: user.id
 		});
 
 		// get the user updated.
-		user = await userQuery.getOneUser(conn, {
-			id: user.id
+		user = await userQuery.getOneUser(req.conn, {
+			user_id: user.id
 		}, req.user);
 
 		// return it.
@@ -98,7 +98,7 @@ async function editUser(conn, req, res, next) {
 			error: err
 		});
 	} finally {
-		conn.release();
+		return next();
 	}
 }
 
@@ -110,7 +110,7 @@ async function editUser(conn, req, res, next) {
 var router = express.Router();
 
 router.route('/invitation/user/:user_id')
-    .get(global.poolConnection.bind(null, getUser))
-    .put(global.poolConnection.bind(null, editUser));
+    .get(getUser)
+    .put(editUser);
 
 module.exports = router;

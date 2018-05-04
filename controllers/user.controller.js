@@ -4,7 +4,6 @@ var express   = require('express'),
 	utilQuery = require('../queries/util.query'),
 	userQuery = require('../queries/user.query'),
 	userLib   = require('../libraries/user.lib'),
-	utilLib   = require('../libraries/util.lib'),
 	emailLib  = require('../libraries/email.lib');
 
 
@@ -15,7 +14,7 @@ var express   = require('express'),
 /**
  * Create a user.
  */
-async function createUser(conn, req, res, next) {
+async function createUser(req, res, next) {
 	try {
 		// new user object.
 		var newUser = {
@@ -25,10 +24,10 @@ async function createUser(conn, req, res, next) {
 		};
 
 		// insert the user.
-		var insertResult = await utilQuery.insert(conn, 'user', newUser);
+		var insertResult = await utilQuery.insert(req.conn, 'user', newUser);
 
 		// get the inserted user.
-		newUser = await userQuery.getOneUser(conn, {
+		newUser = await userQuery.getOneUser(req.conn, {
 			user_id: insertResult.insertId
 		}, req.user);
 
@@ -51,17 +50,17 @@ async function createUser(conn, req, res, next) {
 			error: err
 		});
 	} finally {
-		conn.release();
+		return next();
 	}
 }
 
 /**
  * Edit a user.
  */
-async function editUser(conn, req, res, next) {
+async function editUser(req, res, next) {
 	try {
 		// get the user.
-		var user = await userQuery.getOneUser(conn, {
+		var user = await userQuery.getOneUser(req.conn, {
 			user_id: +req.params.user_id
 		}, req.user);
 
@@ -82,13 +81,13 @@ async function editUser(conn, req, res, next) {
 		}
 
 		// edit the user.
-		await utilQuery.edit(conn, 'user', fieldsToEdit, {
+		await utilQuery.edit(req.conn, 'user', fieldsToEdit, {
 			id: user.id
 		});
 
 		// get the user updated.
-		user = await userQuery.getOneUser(conn, {
-			id: user.id
+		user = await userQuery.getOneUser(req.conn, {
+			user_id: user.id
 		}, req.user);
 
 		// return it.
@@ -101,45 +100,9 @@ async function editUser(conn, req, res, next) {
 			error: err
 		});
 	} finally {
-		conn.release();
+		return next();
 	}
 }
-
-/**
- * Disable a contest.
- */
- async function removeContest(conn, req, res, next) {
- 	try {
- 		// get the contest to be removed.
-		var contest = await contestQuery.getOneContest(conn, {
-			contest_nickname: req.params.nickname
-		}, req.user);
-
-		// remove it.
-		await utilQuery.edit(conn, 'contest', {
-			deleted_at: new Date()
-		}, {
-			id: contest.id
-		});
-
- 		// get the contest updated.
-		contest = await contestQuery.getOneContest(conn, {
-			contest_nickname: req.params.nickname
-		}, req.user);
-
-		// return it.
- 		return res.json({
- 			success: true,
- 			contest: contest
- 		});
- 	} catch(err) {
- 		return next({
- 			error: err
- 		});
- 	} finally {
- 		conn.release();
- 	}
- }
 
 
 /**
@@ -149,10 +112,9 @@ async function editUser(conn, req, res, next) {
 var router = express.Router();
 
 router.route('/user/')
-    .post(global.poolConnection.bind(null, createUser));
+    .post(createUser);
 
 router.route('/user/:user_id')
-    .put(global.poolConnection.bind(null, editUser));
-//     .delete(global.poolConnection.bind(null, removeContest));
+    .put(editUser);
 
 module.exports = router;

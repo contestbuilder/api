@@ -8,6 +8,9 @@ module.exports = `
         email:      String
         deleted_at: Date
 
-        contests: [Contest]
+        contests(
+        	contest_id:       Int, 
+        	contest_nickname: String
+        ): [Contest]
     }
 `;

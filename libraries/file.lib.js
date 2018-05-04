@@ -28,27 +28,21 @@ var filePaths = [{
 }];
 
 
-function getSignedDownloadUrl(key, params, VersionId) {
-	var filePath = checkParameters(key, params);
-	if(!VersionId) {
-		throw new Error('Missing VersionId.');
-	}
-
-
+function getSignedDownloadUrl(filePath) {
 	var signParamObj = {
-        Key:       replacePathWithParams(key, params),
-        Expires:   600,
-        VersionId: VersionId
+        Key:       filePath,
+        Expires:   600
 	};
 
     return s3.getSignedUrl('getObject', signParamObj);
 }
 
-function getSignedUploadUrl(key, params) {
-	var filePath = checkParameters(key, params);
+function getSignedUploadUrl(fileName) {
+	var path = 'files/'
+		+ (new Date().toISOString().replace(/T/, ' ').replace(/\..+/, ''))
+		+ '/'
+		+ fileName;
 
-
-    var path = replacePathWithParams(key, params);
     var signedUrl = s3.createPresignedPost({
         Expires: 600,
         Fields:  {
@@ -60,15 +54,10 @@ function getSignedUploadUrl(key, params) {
     return signedUrl;
 }
 
-function removeFile(key, params, VersionId) {
-	var filePath = checkParameters(key, params);
-
-
-    return aws.s3removeFile(
-    	replacePathWithParams(key, params),
-    	VersionId
-    );
+function removeFile(filePath) {
+    return aws.s3removeFile(filePath);
 }
+
 
 function getFileVersionId(key, params) {
 	var filePath = checkParameters(key, params);

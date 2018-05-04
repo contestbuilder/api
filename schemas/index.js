@@ -17,15 +17,29 @@ var typeDefs = [
     require('./file.schema'),
     `
         type Query {
-            user(id: Int, username: String): [User]
+            user(
+                user_id:       Int, 
+                user_username: String
+            ): [User]
 
-            contest(id: Int, nickname: String): [Contest]
+            contest(
+                contest_id:       Int,
+                contest_nickname: String
+            ): [Contest]
 
-            problem(id: Int, nickname: String): [Problem]
+            problem(
+                problem_id:       Int,
+                problem_nickname: String
+            ): [Problem]
 
-            solution(id: Int, nickname: String): [Solution]
+            solution(
+                solution_id:       Int,
+                solution_nickname: String
+            ): [Solution]
 
-            test_case(id: Int): [TestCase]
+            test_case(
+                test_case_id: Int
+            ): [TestCase]
 
             solution_run(id: Int, number: Int): [SolutionRun]
 

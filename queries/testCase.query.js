@@ -19,7 +19,7 @@ function getTestCases(conn, args, user) {
 			condition: 'cc.contest_id = c.id'
 		}],
 		{
-			'cc.user_id': user._id,
+			'cc.user_id': user.id,
 			'c.id':       args.contest_id,
 			'c.nickname': args.contest_nickname,
 			'p.id':       args.problem_id,
@@ -43,7 +43,7 @@ function getOneTestCase(conn, args, user) {
 			condition: 'cc.contest_id = p.contest_id'
 		}],
 		{
-			'cc.user_id':    user._id,
+			'cc.user_id':    user.id,
 			'tc.id':         args.test_case_id,
 			'tc.deleted_at': args.deleted_at
 		}

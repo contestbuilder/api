@@ -3,7 +3,7 @@
 var utilQuery     = require('../queries/util.query'),
     testCaseQuery = require('../queries/testCase.query');
 
-var query = (args, something, context) => {
+var query = (obj, args, context) => {
     return testCaseQuery.getTestCases(context.conn, args, context.user);
 };
 

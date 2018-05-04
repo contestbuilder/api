@@ -2,17 +2,28 @@
 
 module.exports = `
     type Problem {
-        id:           Int
-        author:       User
-        name:         String
-        nickname:     String
-        description:  String
-        file_url:     String
-        time_limit:   Int
-        order:        Int
-        deleted_at:   Date
+        id:          Int
+        name:        String
+        nickname:    String
+        description: String
+        time_limit:  Int
+        order:       Int
+        deleted_at:  Date
 
-        solutions:  [Solution]
-        test_cases: [TestCase]
+        contest: Contest
+
+        author: User
+
+        file: File
+
+        solutions(
+            solution_id:  Int,
+            show_deleted: Boolean
+        ): [Solution]
+
+        test_cases(
+            test_case_id: Int,
+            show_deleted: Boolean
+        ): [TestCase]
     }
 `;
