@@ -46,6 +46,27 @@ async function createSolution(req, res, next) {
 			problem_id:       problem.id
 		};
 
+		// file.
+		if(req.body.file && req.body.file.name && req.body.file.path) {
+	        var insertFileResult = await utilQuery.insert(req.conn, 'file', {
+	            name: req.body.file.name,
+	            path: req.body.file.path
+	        });
+
+	        newSolution.file_id = insertFileResult.insertId;
+
+	        // large input file.
+			if(req.body.file.large) {
+				var inputFile = await aws.s3downloadFile(req.body.file.path);
+
+	            var textInsertResult = await utilQuery.insert(req.conn, 'text', {
+	            	text: inputFile.Body
+	            });
+
+	            newSolution.text_id = textInsertResult.insertId;
+			}
+		}
+
 		// insert the problem.
 		var insertResult = await utilQuery.insert(req.conn, 'solution', newSolution);
 
@@ -110,6 +131,38 @@ async function editSolution(req, res, next) {
 				}
 			}
 		});
+
+		// file.
+		if(req.body.file && req.body.file.name && req.body.file.path) {
+			// if it's the old file, then there's no need to update it.
+			if(req.body.file.id && req.body.file.id === solution.file_id) {
+			} else {
+		        var insertFileResult = await utilQuery.insert(req.conn, 'file', {
+		            name: req.body.file.name,
+		            path: req.body.file.path
+		        });
+
+				fieldsToEdit['file_id'] = insertFileResult.insertId;
+				fieldsToEdit['last_edit'] = new Date();
+
+		        // large input file.
+				if(req.body.file.large) {
+					var inputFile = await aws.s3downloadFile(req.body.file.path);
+
+		            var textInsertResult = await utilQuery.insert(req.conn, 'text', {
+		            	text: inputFile.Body
+		            });
+
+					fieldsToEdit['text_id'] = textInsertResult.insertId;
+				}
+			}
+		}
+		if(solution.file_id && !req.body.file) {
+			fieldsToEdit['file_id'] = null;
+		}
+		if(solution.text_id && (!req.body.file || !req.body.file.large)) {
+			fieldsToEdit['text_id'] = null;
+		}
 
 		// edit the solution.
 		await utilQuery.edit(req.conn, 'solution', fieldsToEdit, {

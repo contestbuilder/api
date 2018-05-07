@@ -32,6 +32,18 @@ var fields = {
         );
     },
 
+    file: (parent, args, context) => {
+        return utilQuery.selectOne(
+            context.conn,
+            '*',
+            'file',
+            null,
+            {
+                'id': parent.file_id
+            }
+        );
+    },
+
     runs: (parent, args, context) => {
         return utilQuery.select(
             context.conn,

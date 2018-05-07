@@ -12,6 +12,9 @@ module.exports = `
         order:            Int
         last_edit:        Date
         deleted_at:       Date
+        text_id:          Int
+
+        file: File
 
         problem: Problem
 
