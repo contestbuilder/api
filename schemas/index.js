@@ -41,13 +41,18 @@ var typeDefs = [
                 test_case_id: Int
             ): [TestCase]
 
-            solution_run(id: Int, number: Int): [SolutionRun]
+            solution_run(
+                solution_run_id:     Int,
+                solution_run_number: Int
+            ): [SolutionRun]
 
             text(
                 text_id: Int
             ): [Text]
 
-            file(id: Int): [File]
+            file(
+                file_id: Int
+            ): [File]
         }
     `
 ].join('\n');

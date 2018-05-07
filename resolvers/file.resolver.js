@@ -2,7 +2,7 @@
 
 var utilQuery = require('../queries/util.query');
 
-var query = (args, something, context) => {
+var query = (obj, args, context) => {
     return utilQuery.select(
         context.conn,
         '*',

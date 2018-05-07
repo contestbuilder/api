@@ -25,7 +25,7 @@ api.use(require('./invitation.controller'));
 api.use(require('./file.controller'));
 
 // run
-// api.use(require('./run.controller'));
+api.use(require('./run.controller'));
 
 // graphql
 api.use(require('./graphql.controller'));
