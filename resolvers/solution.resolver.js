@@ -9,7 +9,7 @@ var query = (obj, args, context) => {
 
 var fields = {
     author: (parent, args, context) => {
-        return utilQuery.select(
+        return utilQuery.selectOne(
             context.conn,
             '*', 
             'user', 

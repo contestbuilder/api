@@ -43,7 +43,9 @@ var typeDefs = [
 
             solution_run(id: Int, number: Int): [SolutionRun]
 
-            text(id: Int): [Text]
+            text(
+                text_id: Int
+            ): [Text]
 
             file(id: Int): [File]
         }
