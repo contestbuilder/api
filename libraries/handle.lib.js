@@ -39,25 +39,6 @@ function handleFindOne(obj) {
     return Promise.resolve(obj);
 }
 
-function handleAggregationFindOne(obj) {
-    if(!obj || !Array.isArray(obj) || obj.length !== 1) {
-        if(!obj) {
-            console.log('no object');
-        } else if(!Array.isArray(obj)) {
-            console.log('not an array');
-        } else {
-            console.log('length', obj.length);
-        }
-
-        return Promise.reject({
-            message:     'Object not found.',
-            status_code: status.NOT_FOUND
-        });
-    }
-
-    return Promise.resolve(obj[0]);
-}
-
 function handleRequired(body, requiredFields) {
     var missing = [];
 
@@ -106,11 +87,10 @@ function handlePopulate(properties, obj) {
 }
 
 module.exports = {
-    handleError:              handleError,
-    handleReturn:             handleReturn,
-    handleFindOne:            handleFindOne,
-    handleAggregationFindOne: handleAggregationFindOne,
-    handleRequired:           handleRequired,
-    handleLog:                handleLog,
-    handlePopulate:           handlePopulate
+    handleError:    handleError,
+    handleReturn:   handleReturn,
+    handleFindOne:  handleFindOne,
+    handleRequired: handleRequired,
+    handleLog:      handleLog,
+    handlePopulate: handlePopulate
 };

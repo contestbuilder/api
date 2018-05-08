@@ -1,10 +1,10 @@
 'use strict';
 
 var express      = require('express'),
-	utilQuery    = require('../../queries/util.query'),
-	contestQuery = require('../../queries/contest.query'),
-	problemQuery = require('../../queries/problem.query'),
-	utilLib      = require('../../libraries/util.lib');
+	utilQuery    = require('../queries/util.query'),
+	contestQuery = require('../queries/contest.query'),
+	problemQuery = require('../queries/problem.query'),
+	utilLib      = require('../libraries/util.lib');
 
 
 /**

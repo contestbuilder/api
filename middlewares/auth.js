@@ -5,7 +5,6 @@ var status     = require('http-status'),
     jwt        = require('jsonwebtoken'),
     bodyparser = require('body-parser'),
     secret     = require('../libraries/config.lib').env.secret,
-    handleLib  = require('../libraries/handle.lib'),
     userLib    = require('../libraries/user.lib'),
     utilQuery  = require('../queries/util.query'),
     userQuery  = require('../queries/user.query');

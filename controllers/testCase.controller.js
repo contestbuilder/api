@@ -1,13 +1,13 @@
 'use strict';
 
 var express       = require('express'),
-	utilQuery     = require('../../queries/util.query'),
-	contestQuery  = require('../../queries/contest.query'),
-	problemQuery  = require('../../queries/problem.query'),
-	testCaseQuery = require('../../queries/testCase.query'),
-    aws           = require('../../libraries/aws.lib'),
-    fileLib       = require('../../libraries/file.lib'),
-	utilLib       = require('../../libraries/util.lib');
+	utilQuery     = require('../queries/util.query'),
+	contestQuery  = require('../queries/contest.query'),
+	problemQuery  = require('../queries/problem.query'),
+	testCaseQuery = require('../queries/testCase.query'),
+    aws           = require('../libraries/aws.lib'),
+    fileLib       = require('../libraries/file.lib'),
+	utilLib       = require('../libraries/util.lib');
 
 
 /**

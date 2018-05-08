@@ -38,18 +38,6 @@ function getItemIndex(arr, query) {
 	return null;
 }
 
-function aggregate(model, aggregation) {
-	return new Promise(function(resolve, reject) {
-		model.aggregate(aggregation, function(err, results) {
-			if(err) {
-				return reject(err);
-			}
-
-			return resolve(results);
-		});
-	});
-}
-
 function getNickname(name) {
 	return name.replace(/\s/g, '_').toLowerCase();
 }
@@ -58,7 +46,6 @@ module.exports = {
 	validateQuery: validateQuery,
 	getItem:       getItem,
 	getItemIndex:  getItemIndex,
-	aggregate:     aggregate,
 
 	getNickname: getNickname
 };
