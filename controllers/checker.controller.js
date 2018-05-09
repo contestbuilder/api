@@ -1,250 +1,284 @@
 'use strict';
 
-var status      = require('http-status'),
-    express     = require('express'),
-    handleLib   = require('../libraries/handle.lib'),
-    utilLib     = require('../libraries/util.lib'),
-    versionLib  = require('../libraries/version.lib'),
-    models      = require('mongoose').models,
-    Contest     = models.Contest,
-    Log         = models.Log;
+var express      = require('express'),
+    utilQuery    = require('../queries/util.query'),
+    contestQuery = require('../queries/contest.query'),
+    problemQuery = require('../queries/problem.query'),
+    checkerQuery = require('../queries/checker.query'),
+    utilLib      = require('../libraries/util.lib');
 
-function getProblemCheckers(req, res) {
-    Contest.findOne({
-        nickname: req.params.contest_nickname
-    })
-        .then(handleLib.handleFindOne)
-        .then(function(contestDoc) {
-            var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
-            if(!problem) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Problem not found.'
-                });
-            }
 
-            return Promise.resolve(problem.checkers);
-        })
-        .then(handleLib.handleReturn.bind(null, res, 'checkers'))
-        .catch(handleLib.handleError.bind(null, res));
-}
+/**
+ * Controllers
+ */
 
-function createChecker(req, res) {
-    var insertedChecker;
-    handleLib.handleRequired(req.body, [
-        'name', 'source_code'
-    ])
-        .then(function() {
-            return Contest.findOne({
-                nickname: req.params.contest_nickname
+/**
+ * Create a checker.
+ */
+async function createChecker(req, res, next) {
+    try {
+        // get the contest.
+        var contest = await contestQuery.getOneContest(req.conn, {
+            contest_nickname: req.params.nickname
+        }, req.user);
+
+        // get the problem.
+        var problem = await problemQuery.getOneProblem(req.conn, {
+            problem_nickname: req.params.problem_nickname
+        }, req.user);
+
+        // count how many active checkers there are for this problem.
+        var currentCheckersCount = await problemQuery.countCheckers(req.conn, {
+            contest_id: contest.id,
+            problem_id: problem.id
+        }, req.user);
+
+        // new checker object.
+        var newChecker = {
+            name:        req.body.name,
+            nickname:    utilLib.getNickname(req.body.name),
+            language:    req.body.language,
+            source_code: req.body.source_code,
+            order:       currentCheckersCount.count + 1,
+            last_edit:   new Date(),
+            author_id:   req.user.id,
+            problem_id:  problem.id
+        };
+
+        // file.
+        if(req.body.file && req.body.file.name && req.body.file.path) {
+            var insertFileResult = await utilQuery.insert(req.conn, 'file', {
+                name: req.body.file.name,
+                path: req.body.file.path
             });
-        })
-        .then(handleLib.handleFindOne)
-        .then(function(contestDoc) {
-            var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
-            if(!problem) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Problem not found.'
+
+            newChecker.file_id = insertFileResult.insertId;
+
+            // large input file.
+            if(req.body.file.large) {
+                var inputFile = await aws.s3downloadFile(req.body.file.path);
+
+                var textInsertResult = await utilQuery.insert(req.conn, 'text', {
+                    text: inputFile.Body
                 });
+
+                newChecker.text_id = textInsertResult.insertId;
             }
+        }
 
-            var firstVersion = {
-                source_code: req.body.source_code,
-                language:    req.body.language,
-                order:       problem.checkers.length + 1,
-                critical:    true
-            };
+        // insert the problem.
+        var insertResult = await utilQuery.insert(req.conn, 'checker', newChecker);
 
-            var checker = {
-                name: req.body.name,
-                v   : [ firstVersion ]
-            };
+        // get the inserted checker.
+        newChecker = await checkerQuery.getOneChecker(req.conn, {
+            checker_id: insertResult.insertId
+        }, req.user);
 
-            problem.checkers.push(checker);
-            return contestDoc.save();
-        })
-        .then(function(contestDoc) {
-            var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
-            insertedChecker = utilLib.getItem(problem.checkers, { name: req.body.name });
-
-            var log = new Log({
-                author:  req.user._id,
-                contest: contestDoc._id,
-                problem: problem._id,
-                message: 'Checker ' + insertedChecker.name + ' adicionado ao problema ' + problem.name + ' do contest ' + contestDoc.name + '.'
-            });
-            return log.save();
-        })
-        .then(function(logDoc) {
-            return Promise.resolve(insertedChecker);
-        })
-        .then(handleLib.handleReturn.bind(null, res, 'checker'))
-        .catch(handleLib.handleError.bind(null, res));
+        // return it.
+        return res.json({
+            success: true,
+            checker: newChecker
+        });
+    } catch(err) {
+        return next({
+            error: err
+        });
+    } finally {
+        return next();
+    }
 }
 
-function getChecker(req, res) {
-    Contest.findOne({
-        nickname: req.params.contest_nickname
-    })
-        .then(handleLib.handleFindOne)
-        .then(function(contestDoc) {
-            var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
-            if(!problem) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Problem not found.'
-                });
+/**
+ * Edit a checker.
+ */
+async function editChecker(req, res, next) {
+    try {
+        // get the contest.
+        var contest = await contestQuery.getOneContest(req.conn, {
+            contest_nickname: req.params.nickname
+        }, req.user);
+
+        // get the problem.
+        var problem = await problemQuery.getOneProblem(req.conn, {
+            problem_nickname: req.params.problem_nickname,
+            deleted_at: {
+                $isNull: true
             }
+        }, req.user);
 
-            var checker = problem && utilLib.getItem(problem.checkers, { nickname: req.params.checker_nickname });
-            if(!checker) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Checker not found.'
-                });
+        // get the checker.
+        var checker = await checkerQuery.getOneChecker(req.conn, {
+            checker_nickname: req.params.checker_nickname,
+            deleted_at: {
+                $isNull: true
             }
+        }, req.user);
 
-            return Promise.resolve(checker);
-        })
-        .then(handleLib.handleReturn.bind(null, res, 'checker'))
-        .catch(handleLib.handleError.bind(null, res));
-}
+        // identify the fields that will be edited.
+        var fieldsToEdit = {};
+        [
+            { key: 'name',             critical: false },
+            { key: 'language',         critical: true  },
+            { key: 'source_code',      critical: true  }
+        ].forEach(param => {
+            if(req.body[param.key] !== undefined) {
+                fieldsToEdit[param.key] = req.body[param.key];
 
-function removeChecker(req, res) {
-    Contest.findOne({
-        nickname: req.params.contest_nickname
-    })
-        .then(handleLib.handleFindOne)
-        .then(function(contestDoc) {
-            var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
-            if(!problem) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Problem not found.'
-                });
-            }
-
-            var checkerIndex = utilLib.getItemIndex(problem.checkers, { nickname: req.params.checker_nickname });
-            if(checkerIndex === null) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Checker not found.'
-                });
-            }
-
-            problem.checkers.forEach(function(checker) {
-                var c_lastVersion = versionLib.getLastVersion(checker.v);
-                if(c_lastVersion.order > versionLib.getLastVersion(problem.checkers[checkerIndex].v).order) {
-                    checker.v.push(versionLib.createNewVersion(checker.v, {
-                        critical: false,
-                        order   : c_lastVersion.order - 1
-                    }));
+                if(param.critical) {
+                    fieldsToEdit['last_edit'] = new Date();
                 }
-            });
-            problem.checkers.splice(checkerIndex, 1);
+            }
+        });
 
-            return contestDoc.save();
-        })
-        .then(handleLib.handleReturn.bind(null, res, 'contest'))
-        .catch(handleLib.handleError.bind(null, res));
+        // file.
+        if(req.body.file && req.body.file.name && req.body.file.path) {
+            // if it's the old file, then there's no need to update it.
+            if(req.body.file.id && req.body.file.id === checker.file_id) {
+            } else {
+                var insertFileResult = await utilQuery.insert(req.conn, 'file', {
+                    name: req.body.file.name,
+                    path: req.body.file.path
+                });
+
+                fieldsToEdit['file_id'] = insertFileResult.insertId;
+                fieldsToEdit['last_edit'] = new Date();
+
+                // large input file.
+                if(req.body.file.large) {
+                    var inputFile = await aws.s3downloadFile(req.body.file.path);
+
+                    var textInsertResult = await utilQuery.insert(req.conn, 'text', {
+                        text: inputFile.Body
+                    });
+
+                    fieldsToEdit['text_id'] = textInsertResult.insertId;
+                }
+            }
+        }
+        if(checker.file_id && !req.body.file) {
+            fieldsToEdit['file_id'] = null;
+        }
+        if(checker.text_id && (!req.body.file || !req.body.file.large)) {
+            fieldsToEdit['text_id'] = null;
+        }
+
+        // edit the checker.
+        await utilQuery.edit(req.conn, 'checker', fieldsToEdit, {
+            id: checker.id
+        });
+
+        // get the checker updated.
+        checker = await checkerQuery.getOneChecker(req.conn, {
+            checker_id: checker.id,
+            deleted_at: {
+                $isNull: true
+            }
+        }, req.user);
+
+        // return it.
+        return res.json({
+            success: true,
+            checker: checker
+        });
+    } catch(err) {
+        return next({
+            error: err
+        });
+    } finally {
+        return next();
+    }
 }
 
-function editChecker(req, res) {
-    var editedChecker;
-    Contest.findOne({
-        nickname: req.params.contest_nickname
-    })
-        .then(function(contestDoc) {
-            var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
-            if(!problem) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Problem not found.'
+/**
+ * Disable a checker.
+ */
+async function removeChecker(req, res, next) {
+    await utilQuery.beginTransaction(req.conn);
+    try {
+        // get the contest.
+        var contest = await contestQuery.getOneContest(req.conn, {
+            contest_nickname: req.params.nickname
+        }, req.user);
+
+        // get the problem.
+        var problem = await problemQuery.getOneProblem(req.conn, {
+            problem_nickname: req.params.problem_nickname,
+            deleted_at: {
+                $isNull: true
+            }
+        }, req.user);
+
+        // get the checker.
+        var checker = await checkerQuery.getOneChecker(req.conn, {
+            checker_nickname: req.params.checker_nickname,
+            deleted_at: {
+                $isNull: true
+            }
+        }, req.user);
+
+        // remove the checker.
+        await utilQuery.edit(req.conn, 'checker', {
+            deleted_at: new Date()
+        }, {
+            id: checker.id
+        });
+
+        // reorder the checkers accordingly.
+        var remainingCheckers = await checkerQuery.getCheckers(req.conn, {
+            problem_id: problem.id,
+            deleted_at: {
+                $isNull: true
+            }
+        }, req.user);
+        for(var index=0; index<remainingCheckers.length; index++) {
+            var remainingChecker = remainingCheckers[index];
+
+            if(remainingChecker.order > checker.order) {
+                await utilQuery.edit(req.conn, 'checker', {
+                    order: remainingChecker.order - 1
+                }, {
+                    id: remainingChecker.id
                 });
             }
+        }
+        await utilQuery.commit(req.conn);
 
-            var checkerIndex = utilLib.getItemIndex(problem.checkers, { nickname: req.params.checker_nickname });
-            if(checkerIndex === null) {
-                return Promise.reject({
-                    status_code: status.NOT_FOUND,
-                    message:     'Checker not found.'
-                });
+        // get the checker updated.
+        checker = await checkerQuery.getOneChecker(req.conn, {
+            checker_id: checker.id,
+            deleted_at: {
+                $isNull: false
             }
+        }, req.user);
 
-            var newVersion = versionLib.createNewVersion(problem.checkers[checkerIndex].v);
-            var critical = false;
+        // return it.
+        return res.json({
+            success: true,
+            checker: checker
+        });
+    } catch(err) {
+        await utilQuery.rollback(req.conn);
 
-            if((!req.body.source_code || req.body.source_code == newVersion.source_code)
-            && (!req.body.language    || req.body.language == newVersion.language)
-            && (!req.body.order       || req.body.order == newVersion.order)) {
-                return Promise.reject({
-                    status_code: status.BAD_REQUEST,
-                    message:     'No fields to be changed.'
-                });
-            }
+        return next({
+            error: err
+        });
+    } finally {
+        return next();
+    }
+}
 
-            // source_code
-            if(req.body.source_code !== undefined && req.body.source_code != newVersion.source_code) {
-                newVersion.source_code = req.body.source_code;
-                critical = true;
-            }
 
-            // language
-            if(req.body.language !== undefined && req.body.language != newVersion.language) {
-                newVersion.language = req.body.language;
-                critical = true;
-            }
-
-            // order
-            if(req.body.order !== undefined && req.body.order != newVersion.order) {
-                problem.checkers.forEach(function(c, index) {
-                    var c_lastVersion = versionLib.getLastVersion(c.v);
-
-                    if(index != checkerIndex
-                    && versionLib.isBetween(c_lastVersion.order, newVersion.order, req.body.order)) {
-                        c.v.push(versionLib.createNewVersion(c.v, {
-                            critical: false,
-                            order:    c_lastVersion.order + (newVersion.order > req.body.order ? 1 : -1)
-                        }));
-                    }
-                });
-
-                newVersion.order = req.body.order;
-            }
-
-            newVersion.critical = critical;
-            problem.checkers[checkerIndex].v.push(newVersion);
-            return contestDoc.save();
-        })
-        .then(function(contestDoc) {
-            var problem = utilLib.getItem(contestDoc.problems, { nickname: req.params.problem_nickname });
-            editedChecker = utilLib.getItem(problem.checkers, { nickname: req.params.checker_nickname });
-
-            var log = new Log({
-                author:  req.user._id,
-                contest: contestDoc._id,
-                problem: problem._id,
-                message: 'Checker ' + editedChecker.name + ' editado.'
-            });
-            return log.save();
-        })
-        .then(function(logDoc) {
-            return Promise.resolve(editedChecker);
-        })
-        .then(handleLib.handleReturn.bind(null, res, 'checker'))
-        .catch(handleLib.handleError.bind(null, res));
-};
+/**
+ * Routes
+ */
 
 var router = express.Router();
 
-router.route('/contest/:contest_nickname/problem/:problem_nickname/checker')
-    .get(getProblemCheckers)
+router.route('/contest/:nickname/problem/:problem_nickname/checker')
     .post(createChecker);
 
-router.route('/contest/:contest_nickname/problem/:problem_nickname/checker/:checker_nickname')
-    .get(getChecker)
-    .delete(removeChecker)
-    .put(editChecker);
+router.route('/contest/:nickname/problem/:problem_nickname/checker/:checker_nickname')
+    .put(editChecker)
+    .delete(removeChecker);
 
 module.exports = router;

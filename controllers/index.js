@@ -14,7 +14,7 @@ api.use(require('./contest.controller'));
 api.use(require('./contributor.controller'));
 api.use(require('./problem.controller'));
 api.use(require('./solution.controller'));
-/// api.use(require('./checker.controller'));
+api.use(require('./checker.controller'));
 api.use(require('./testCase.controller'));
 /// api.use(require('./log.controller'));
 /// api.use(require('./email.controller'));

@@ -11,6 +11,7 @@ var typeDefs = [
     require('./contest.schema'),
     require('./problem.schema'),
     require('./solution.schema'),
+    require('./checker.schema'),
     require('./testCase.schema'),
     require('./solutionRun.schema'),
     require('./text.schema'),
@@ -36,6 +37,11 @@ var typeDefs = [
                 solution_id:       Int,
                 solution_nickname: String
             ): [Solution]
+
+            checker(
+                checker_id:       Int,
+                checker_nickname: String
+            ): [Checker]
 
             test_case(
                 test_case_id: Int

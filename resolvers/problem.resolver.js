@@ -82,6 +82,26 @@ var fields = {
                 'tc.deleted_at': deletedCondition
             }
         );
+    },
+
+    checkers: (parent, args, context) => {
+        var deletedCondition = {
+            $isNull: true
+        };
+        if(args.show_deleted === true) {
+            deletedCondition = null;
+        }
+
+        return utilQuery.select(
+            context.conn,
+            'c.*',
+            'checker c',
+            [],
+            {
+                'c.problem_id': parent.id,
+                'c.deleted_at': deletedCondition
+            }
+        );
     }
 };
 

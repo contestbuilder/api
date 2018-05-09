@@ -67,6 +67,29 @@ function countSolutions(conn, args, user) {
 	);
 }
 
+// count how many checkers this problem has.
+function countCheckers(conn, args, user) {
+	return utilQuery.selectOne(
+		conn,
+		'count(*) as count',
+		'checker c',
+		[{
+			table:     'problem p',
+			condition: 'p.id = c.problem_id'
+		}, {
+            table:     'contest_contributor cb',
+            condition: 'cb.contest_id = p.contest_id'
+        }],
+		{
+			'cb.user_id':   user.id,
+			'c.problem_id': args.problem_id,
+			'c.deleted_at': {
+				$isNull: true
+			}
+		}
+	);
+}
+
 // count how many test cases this problem has.
 function countTestCases(conn, args, user) {
 	return utilQuery.selectOne(
@@ -111,6 +134,7 @@ module.exports = {
 	getOneProblem: getOneProblem,
 
 	countSolutions: countSolutions,
+	countCheckers:  countCheckers,
 	countTestCases: countTestCases,
 
 	getHighestSolutionRunNumber: getHighestSolutionRunNumber

@@ -21,6 +21,11 @@ module.exports = `
             show_deleted: Boolean
         ): [Solution]
 
+        checkers(
+            checker_id:   Int,
+            show_deleted: Boolean
+        ): [Checker]
+
         test_cases(
             test_case_id: Int,
             show_deleted: Boolean

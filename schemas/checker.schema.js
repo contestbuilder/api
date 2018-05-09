@@ -1,25 +1,20 @@
 'use strict';
 
-var mongoose         = require('mongoose'),
-	Schema           = mongoose.Schema,
-    runSchema        = require('./run.schema'),
-    checkerLogSchema = require('./checkerLog.schema');
+module.exports = `
+    type Checker {
+        id:          Int
+        author:      User
+        name:        String
+        nickname:    String
+        language:    String
+        source_code: String
+        order:       Int
+        last_edit:   Date
+        deleted_at:  Date
+        text_id:     Int
 
-var checkerSchema = new Schema({
-    name:       {
-        type:     String,
-        required: true,
-        unique:   true
-    },
-    nickname:   {
-        type:   String,
-        unique: true
-    },
-    deleted_at: {
-        type: Date
-    },
-    v:          [ checkerLogSchema ],
-    run:        [ runSchema ]
-});
+        file: File
 
-module.exports = checkerSchema;
+        problem: Problem
+    }
+`;
