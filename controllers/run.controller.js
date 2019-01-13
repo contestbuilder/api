@@ -6,7 +6,6 @@ var express       = require('express'),
 	problemQuery  = require('../queries/problem.query'),
 	solutionQuery = require('../queries/solution.query'),
 	testCaseQuery = require('../queries/testCase.query'),
-	utilLib       = require('../libraries/util.lib'),
 	runLib        = require('../libraries/run.lib');
 
 

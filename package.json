@@ -41,6 +41,6 @@
   },
   "scripts": {
     "start": "nodemon ./index.js --exec babel-node",
-    "test": "mocha tests"
+    "test": ""
   }
 }
